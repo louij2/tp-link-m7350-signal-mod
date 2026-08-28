@@ -409,11 +409,27 @@
     x.send();
   }
 
-  function ctl(action, cb) {
+  function isMutation(a) { return /_on$|_off$/.test(a) || a === 'reboot'; }
+  function storedPw() { try { return sessionStorage.getItem('sigmodPw'); } catch (e) { return null; } }
+
+  // Sends the control password (X-Auth) on state-changing actions. If the server
+  // requires auth (403) and we have no/incorrect password, prompt once and retry.
+  function ctl(action, cb, pw) {
     var x = new XMLHttpRequest();
-    x.onload = function () { try { cb && cb(JSON.parse(x.responseText)); } catch (e) { cb && cb({}); } };
+    x.onload = function () {
+      if (x.status === 403) {
+        var p = window.prompt('Control password:');
+        if (p === null) { cb && cb({ error: 'auth' }); return; }
+        try { sessionStorage.setItem('sigmodPw', p); } catch (e) {}
+        ctl(action, cb, p);            // retry with the entered password
+        return;
+      }
+      try { cb && cb(JSON.parse(x.responseText)); } catch (e) { cb && cb({}); }
+    };
     x.onerror = function () { cb && cb({}); };
     x.open('GET', CGI_CTL + '?action=' + action + '&t=' + (new Date()).getTime(), true);
+    var use = (pw != null) ? pw : storedPw();
+    if (isMutation(action) && use) x.setRequestHeader('X-Auth', use);
     x.send();
   }
 

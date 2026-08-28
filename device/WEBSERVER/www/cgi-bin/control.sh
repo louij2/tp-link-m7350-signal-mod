@@ -1,18 +1,36 @@
 #!/bin/sh
-# M7350 mod: control actions for the web UI (reboot / ADB toggle / TTL-fix).
+# M7350 mod: control actions for the web UI (reboot / ADB / TTL / FTP / Telnet /
+# Wi-Fi toggles).
 #
-# SECURITY NOTE: these actions are NOT authenticated at the CGI layer -- any
-# client that can reach the LAN/USB web server can call them. That matches the
-# stock UI's own trust model (LAN-only, admin/admin) but be aware of it.
+# AUTH: state-changing actions (*_on / *_off / reboot) require a password when
+# /etc/signalmod.pw exists (root-only, chmod 600, NOT in the repo). The client
+# sends it in the X-Auth header (or ?auth=). Status reads stay open so the panel
+# can poll without a prompt. If the password file is absent, actions are
+# unauthenticated (backwards-compatible) -- set one before exposing the device:
+#   printf '%s' 'yourpassword' > /etc/signalmod.pw && chmod 600 /etc/signalmod.pw
 #
-# TTL-fix: forces a fixed IP TTL on packets leaving the mobile interface so the
-# carrier cannot see per-hop TTL decrement from tethered devices (helps with
-# "tethering" throttling on SMARTY/Three). Runtime rule; boot persistence is
-# handled by the signal_poll init script re-applying it when the marker exists.
+# TTL-fix pins a fixed egress TTL (see below). LAN-only bindings throughout.
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
-printf 'Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\n\r\n'
 
 A=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*action=\([a-zA-Z_]*\).*/\1/p')
+
+# --- Auth gate (before any headers are emitted) ---------------------------
+PWFILE=/etc/signalmod.pw
+case "$A" in
+  *_on|*_off|reboot)
+    if [ -s "$PWFILE" ]; then
+      supplied="$HTTP_X_AUTH"
+      [ -z "$supplied" ] && supplied=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*[?&]auth=\([^&]*\).*/\1/p')
+      if [ "$supplied" != "$(cat "$PWFILE" 2>/dev/null)" ]; then
+        printf 'Status: 403 Forbidden\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n{"error":"auth"}'
+        exit 0
+      fi
+    fi
+    ;;
+esac
+
+printf 'Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\n\r\n'
+
 WAN=rmnet0
 TTL_VAL=65
 MARK=/etc/signalmod_ttl

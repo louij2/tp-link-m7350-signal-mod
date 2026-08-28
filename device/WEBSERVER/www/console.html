@@ -86,9 +86,15 @@
       if(!c) return;
       hist.push(c); hi=hist.length;
       append('<span class="cmd"># '+esc(c)+'</span>\n');
+      var pw=null; try{pw=sessionStorage.getItem('sigmodPw');}catch(e){}
+      if(!pw){ pw=window.prompt('Console password:'); if(pw===null){ return; } try{sessionStorage.setItem('sigmodPw',pw);}catch(e){} }
       var x=new XMLHttpRequest();
       x.open('POST','/cgi-bin/exec.sh',true);
-      x.onload=function(){ append(esc(x.responseText)+'\n'); };
+      x.setRequestHeader('X-Auth', pw);
+      x.onload=function(){
+        if(x.status===403){ try{sessionStorage.removeItem('sigmodPw');}catch(e){} append('<span class="err">[auth failed — set /etc/signalmod.pw and retry]</span>\n'); return; }
+        append(esc(x.responseText)+'\n');
+      };
       x.onerror=function(){ append('<span class="err">[request failed]</span>\n'); };
       x.send(c);
     }

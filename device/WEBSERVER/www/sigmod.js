@@ -29,6 +29,10 @@
   var CGI_SIGNAL = '/cgi-bin/signal_stats.sh';
   var CGI_SYS    = '/cgi-bin/sysinfo.sh';
   var CGI_CTL    = '/cgi-bin/control.sh';
+  var CGI_DEV    = '/cgi-bin/deviceinfo.sh';
+
+  // Custom device name (AirPort-style). Change this to rebrand the UI.
+  var MODEL = 'M7350 Extreme';
 
   /* ==================================================================== *
    * Dark theme                                                           *
@@ -70,6 +74,13 @@
     '.btn-info,.btn-primary{background:#38bdf8!important;border-color:transparent!important;color:#04121a!important;}',
     '#connectionStatus,#connection{color:#34d399!important;}',
     '#sigRsrp,#sigBand{color:#e6edf3!important;}',
+    /* Login status box: let it grow so the extra signal rows never spill past
+     * the panel edge (the stock CSS gives it a fixed height). */
+    '#loginStatus,.section-status{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:16px 18px 18px!important;box-sizing:border-box!important;}',
+    '#content,#loginContainer{height:auto!important;overflow:visible!important;}',
+    '#deviceName{font-weight:600;}',
+    /* Hide the Wizard tab (first-run setup) -- not needed day to day. */
+    '#tabWizard{display:none!important;}',
     /* Mod panels ------------------------------------------------------- */
     '.sigmod-card{background:#171b21!important;border:1px solid #2a313b;border-radius:10px;padding:12px 14px;margin:12px 0;}',
     '.sigmod-card h3{margin:0 0 10px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;display:flex;align-items:center;gap:8px;}',
@@ -297,10 +308,41 @@
         'TTL-fix pins outgoing TTL to 65 (helps tethering on SMARTY/Three). ' +
         'ADB toggles the USB debug bridge.</div>';
 
+    var about = document.createElement('div');
+    about.className = 'sigmod-card';
+    about.id = 'sigmodAbout';
+    about.innerHTML =
+      '<h3>' + svg('chip', 15) + 'About Device</h3>' +
+      '<div class="sigmod-grid">' +
+        stat('chip', 'Model', 'abModel') +
+        stat('advanced', 'Firmware', 'abFw') +
+        stat('chip', 'Hardware', 'abHw') +
+        stat('signal', 'IMEI', 'abImei') +
+        stat('globe', 'MAC', 'abMac') +
+        stat('usb', 'IMSI', 'abImsi') +
+        stat('sms', 'SIM Number', 'abSim') +
+      '</div>';
+
     host.appendChild(sys);
     host.appendChild(ctl);
+    host.appendChild(about);
     wireControls();
     refreshCtlState();
+    fetchDeviceInfo();
+  }
+
+  function fetchDeviceInfo() {
+    var x = new XMLHttpRequest();
+    x.onload = function () {
+      try {
+        var d = JSON.parse(x.responseText);
+        var set = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v || '—'; };
+        set('abModel', d.model); set('abFw', d.firmware); set('abHw', d.hardware);
+        set('abImei', d.imei); set('abMac', d.mac); set('abImsi', d.imsi); set('abSim', d.sim);
+      } catch (e) {}
+    };
+    x.open('GET', CGI_DEV + '?t=' + (new Date()).getTime(), true);
+    x.send();
   }
 
   function injectPanels() {
@@ -384,8 +426,17 @@
   /* ==================================================================== *
    * Main loop                                                            *
    * ==================================================================== */
+  // Rebrand the device name shown next to the TP-LINK logo (login header).
+  function ensureBranding() {
+    try {
+      var dn = document.getElementById('deviceName');
+      if (dn && dn.textContent !== MODEL) dn.textContent = MODEL;
+    } catch (e) {}
+  }
+
   function tick() {
     try { ensureDarkTheme(); } catch (e) {}
+    try { ensureBranding(); } catch (e) {}
     try { ensureIcons(); } catch (e) {}
     try { injectSignalRows(); } catch (e) {}
     try { injectPanels(); } catch (e) {}

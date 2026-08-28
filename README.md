@@ -22,10 +22,19 @@ GL.iNet router): you can watch signal quality and the serving band straight from
 | RSRP / RSRQ / RSSI, EARFCN, LTE **Band** (derived) | Login page status block **and** the post-login **Status** tab, under *Connection Status* |
 | Colour-coded **signal-quality bar** | Same status views |
 | Live **throughput** (↓/↑) + **latency** + **uptime** | Same status views |
+| **System** panel (temp, WAN IP, signal bar, throughput, uptime) | Post-login Status tab |
+| **Controls** panel: **Reboot**, **ADB on/off**, **TTL-fix on/off** | Post-login Status tab |
 | **Prometheus** metrics endpoint (for Grafana) | `http://192.168.0.1/cgi-bin/metrics.sh` |
-| Modern dark theme (keeps the stock icons/logo) | Whole web UI (login + admin) |
+| Modern dark theme with **inline-SVG icons** (readable on every page, incl. Advanced) | Whole web UI (login + admin) |
 | Root web console (optional) | `http://192.168.0.1/console.html` |
 | Survives reboot | Daemon auto-starts via a SysV init script; all files live on persistent NAND |
+
+**TTL-fix** pins the outgoing IP TTL on the mobile interface to 65 so the carrier
+can't see per-hop decrement from tethered devices — handy against tethering
+throttling on SMARTY/Three. It's a toggle (off by default) and is re-applied at
+boot when left on. **ADB on/off** toggles the USB debug bridge from the browser
+(turning it off drops adb until you turn it back on here or reboot). Both the
+System and Controls panels are **post-login only**.
 
 The stats come from a small daemon that polls the modem's AT channel every 5s and
 caches JSON; the web UI reads that cache. The UI changes are injected by one
@@ -236,6 +245,8 @@ device/
   etc/init.d/signal_poll                 SysV init script (boot start)
   WEBSERVER/www/cgi-bin/signal_stats.sh  serves the cached JSON
   WEBSERVER/www/cgi-bin/metrics.sh       Prometheus metrics endpoint
+  WEBSERVER/www/cgi-bin/sysinfo.sh       read-only System panel data (temp/mem/wan/ttl/adb)
+  WEBSERVER/www/cgi-bin/control.sh       actions: reboot / adb on|off / ttl-fix on|off
   WEBSERVER/www/cgi-bin/exec.sh          root web-console backend (opt-in)
   WEBSERVER/www/sigmod.js                head-loaded UI injector + inline dark theme
   WEBSERVER/www/darkmode.css             dark theme (standalone copy)

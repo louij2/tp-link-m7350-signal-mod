@@ -17,7 +17,7 @@ set -euo pipefail
 ADB="${ADB:-adb}"
 PUBKEY="${1:-$HOME/.ssh/id_ed25519.pub}"
 DROPBEAR_VER=2022.83
-LAN_IP=192.168.0.1
+LAN_IP="$("${ADB}" shell "ip -4 addr show br0 | grep -o 'inet [0-9.]*' | head -1 | cut -d' ' -f2" | tr -d "\r")"; [ -z "$LAN_IP" ] && LAN_IP=192.168.0.1
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$HERE/build/ssh"; mkdir -p "$OUT"
 

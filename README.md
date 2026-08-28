@@ -257,6 +257,30 @@ scripts/
 
 ---
 
+## Customising it yourself (VS Code) + auto-deploy
+
+All the UI text lives in **`device/WEBSERVER/www/sigmod.js`**. Common edits:
+
+- **Device name** (next to the logo): `var MODEL = 'M7350 Extreme';`
+- **Panel titles**: search for `'System'`, `'Controls'`, `'About Device'` inside `<h3>...</h3>`.
+- **Stat labels**: the 2nd arg of `stat(icon, 'Label', id)` — e.g. `stat('thermo', 'Temp', 'spTemp')`.
+- **Row labels**: `makeRow('sigRow', 'RSRP / RSRQ', 'sigRsrp')`.
+- **Button text**: `'TTL-fix'`, `'ADB'`, `'FTP'`, `'Telnet'`, `'Reboot'`.
+- **Theme colours**: the `--dk-*` variables at the top of `DARK_CSS`.
+
+Then push it to the device:
+
+```bash
+scripts/deploy.sh          # pushes JS+CGIs and auto-bumps the ?v= cache-buster
+```
+
+**Auto-deploy on merge:** run `scripts/install-hooks.sh` once. After that, editing +
+committing (or merging a PR on GitHub and running `git pull` on the Mac that has the
+device on USB) fires a `post-merge` hook that redeploys automatically. GitHub Actions
+can't reach the USB-only device, so deployment is a local hook — until the device sits
+behind a network path (e.g. tethered to a GL.iNet), where a self-hosted runner could
+do it on merge.
+
 ## Roadmap / notes
 
 - **Onboard OLED**: the device has an SSD130x-class OLED driven by `/usr/bin/oledd`

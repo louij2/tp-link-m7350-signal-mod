@@ -43,9 +43,11 @@ case "$1" in
         || iptables -t mangle -A POSTROUTING -o "$WAN" -j TTL --ttl-set 65 2>/dev/null
     fi
     # Re-start the LAN-only FTP file server if the user left it enabled from the
-    # web UI (marker set by control.sh). Serves / read-write on 192.168.0.1:21.
+    # web UI (marker set by control.sh). Serves / read-write on the LAN IP:21.
+    LANIP=$(ip -4 addr show br0 2>/dev/null | grep -o 'inet [0-9.]*' | head -1 | cut -d' ' -f2)
+    [ -z "$LANIP" ] && LANIP=192.168.0.1
     if [ -f /etc/signalmod_ftp ] && ! netstat -ltn 2>/dev/null | grep -q ':21 '; then
-      nohup setsid tcpsvd -vE 192.168.0.1 21 ftpd -w / </dev/null >/dev/null 2>&1 &
+      nohup setsid tcpsvd -vE "$LANIP" 21 ftpd -w / </dev/null >/dev/null 2>&1 &
     fi
     echo "done"
     ;;

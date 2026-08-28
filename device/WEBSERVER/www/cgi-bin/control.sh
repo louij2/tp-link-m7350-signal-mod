@@ -16,6 +16,25 @@ A=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*action=\([a-zA-Z_]*\).*/\1/p')
 WAN=rmnet0
 TTL_VAL=65
 MARK=/etc/signalmod_ttl
+# Bind admin services to the LAN only (never the WAN). Derived from br0 so it
+# follows any LAN-IP change instead of being hardcoded.
+LAN_IP=$(ip -4 addr show br0 2>/dev/null | grep -o 'inet [0-9.]*' | head -1 | cut -d' ' -f2)
+[ -z "$LAN_IP" ] && LAN_IP=192.168.0.1
+FTP_MARK=/etc/signalmod_ftp
+
+# --- FTP (busybox ftpd via tcpsvd, rooted at /, LAN-only) ------------------
+ftp_state() { netstat -ltn 2>/dev/null | grep -q "$LAN_IP:21\|:::21\|0.0.0.0:21" && echo on || echo off; }
+ftp_on() {
+  ftp_state | grep -q on && { touch "$FTP_MARK"; return; }
+  setsid tcpsvd -vE "$LAN_IP" 21 ftpd -w / </dev/null >/dev/null 2>&1 &
+  touch "$FTP_MARK" 2>/dev/null
+}
+ftp_off() { pkill -f "tcpsvd $LAN_IP 21" 2>/dev/null; pkill -f 'tcpsvd -vE '"$LAN_IP"' 21' 2>/dev/null; rm -f "$FTP_MARK" 2>/dev/null; }
+
+# --- Telnet (busybox telnetd; often already listening on :23) --------------
+tel_state() { netstat -ltn 2>/dev/null | grep -q ':23 ' && echo on || echo off; }
+tel_on()  { tel_state | grep -q on || { setsid telnetd -l /bin/sh </dev/null >/dev/null 2>&1 & } ; }
+tel_off() { pkill telnetd 2>/dev/null; }
 
 ttl_state() {
   iptables -t mangle -S POSTROUTING 2>/dev/null | grep -q 'ttl-set' && echo on || echo off
@@ -53,5 +72,11 @@ case "$A" in
   ttl_on)  ttl_on;  printf '{"ok":true,"ttl":"%s"}' "$(ttl_state)" ;;
   ttl_off) ttl_off; printf '{"ok":true,"ttl":"%s"}' "$(ttl_state)" ;;
   ttl_status) printf '{"ttl":"%s"}' "$(ttl_state)" ;;
+  ftp_on)  ftp_on;  sleep 1; printf '{"ok":true,"ftp":"%s"}' "$(ftp_state)" ;;
+  ftp_off) ftp_off; printf '{"ok":true,"ftp":"%s"}' "$(ftp_state)" ;;
+  ftp_status) printf '{"ftp":"%s"}' "$(ftp_state)" ;;
+  telnet_on)  tel_on;  sleep 1; printf '{"ok":true,"telnet":"%s"}' "$(tel_state)" ;;
+  telnet_off) tel_off; printf '{"ok":true,"telnet":"%s"}' "$(tel_state)" ;;
+  telnet_status) printf '{"telnet":"%s"}' "$(tel_state)" ;;
   *) printf '{"error":"unknown action"}' ;;
 esac

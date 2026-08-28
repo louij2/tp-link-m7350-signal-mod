@@ -2,7 +2,32 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
-## [2.0.0] — 2026-08-28
+## [2.1.0] — 2026-08-28  ·  **security release (recommended)**
+
+Hardens the optional root-access features from 2.0.0. **Use this, not 2.0.0, for
+anything beyond isolated testing.**
+
+### Security
+- **CGI auth**: state-changing control actions (`*_on`/`*_off`/`reboot`) now require
+  a password (sent as the `X-Auth` header, checked against `/etc/signalmod.pw` —
+  root-only, chmod 600, never in the repo). Status reads stay open. Backwards-
+  compatible: with no password file, control behaves as in 2.0.0, so **set a
+  password to activate the gate**.
+- **Root web console fails closed**: `exec.sh` refuses unless a password is set
+  and the correct `X-Auth` is sent. `console.html` prompts for it.
+
+### Added
+- **LTE auto-reconnect** watchdog (`lte_reconnect.sh`, opt-in via
+  `touch /etc/signalmod_lte`) — keeps the data link up unattended, e.g. behind a
+  GL.iNet. Verify the QCMAP ubus operation codes on-device before relying on it.
+- Model shows **M7350+**; login header **M7350+ Extreme**; Wi-Fi AP on/off toggle;
+  battery in the System panel; status-page card redesign.
+
+## [2.0.0] — 2026-08-28  ·  **initial / testing only**
+
+> ⚠️ **2.0.0 ships unauthenticated root tooling** (FTP/Telnet/web-console toggles
+> with no auth). Only run it on an isolated, trusted setup you fully control.
+> **Upgrade to 2.1.0** for the authenticated versions.
 
 First tagged release. A web-UI + system mod for the TP-Link M7350 v3 (Qualcomm
 MDM9625), installed over root ADB. Reversible; all files live on persistent NAND.

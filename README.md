@@ -92,6 +92,29 @@ included).
 
 ## Install
 
+> **This is a mod, not a reflash.** Nothing overwrites the NAND firmware image —
+> it drops files onto the existing rootfs over root ADB and is fully reversible
+> with `scripts/uninstall.sh`. You keep the stock firmware; you just get a better
+> UI and some extra tools on top.
+
+### From a release (recommended)
+
+1. Download `m7350-extreme-mod-<version>.tar.gz` from the
+   [Releases page](https://github.com/louij2/tp-link-m7350-signal-mod/releases)
+   (verify with the `.sha256` alongside it).
+2. Extract it and, with the router connected over root ADB (`adb devices` shows it):
+
+```bash
+tar xzf m7350-extreme-mod-*.tar.gz && cd m7350-extreme-mod-*
+ADB=/path/to/adb ./scripts/backup.sh      # optional: snapshot stock pages first
+ADB=/path/to/adb ./scripts/install.sh
+```
+
+Then open `http://192.168.0.1/` (login `admin`/`admin`). Optional extras:
+`scripts/build-ssh.sh` (SSH), `scripts/enable-console.sh` (web console).
+
+### From source
+
 ```bash
 # from the repo root
 ADB=/path/to/adb ./scripts/backup.sh          # optional but recommended: snapshot stock first
@@ -328,6 +351,15 @@ do it on merge.
   may not survive a factory reset; the mod files themselves do persist.
 
 ---
+
+## Contributing / branching
+
+- `main` is the released line; tags (`v2.0.0`, …) mark releases.
+- Do day-to-day work on `dev` (or feature branches off it), then PR into `main`.
+- If you've run `scripts/install-hooks.sh`, merging/pulling auto-deploys to a
+  connected device — so keep `main` deployable.
+- Cut a release: bump `VERSION` + update `CHANGELOG.md`, `scripts/make-release.sh`,
+  tag `vX.Y.Z`, and attach the tarball to a GitHub Release.
 
 ## License
 

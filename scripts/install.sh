@@ -31,6 +31,9 @@ done
 say "Deploying signal daemon + init script..."
 "$ADB" push "$DEV/usr/bin/signal_poll.sh"          /usr/bin/signal_poll.sh
 "$ADB" shell "chmod 755 /usr/bin/signal_poll.sh"
+for d in oled_brand.sh lte_reconnect.sh; do
+  [ -f "$DEV/usr/bin/$d" ] && { "$ADB" push "$DEV/usr/bin/$d" "/usr/bin/$d"; "$ADB" shell "chmod 755 /usr/bin/$d"; }
+done
 "$ADB" push "$DEV/etc/init.d/signal_poll"          /etc/init.d/signal_poll
 "$ADB" shell "chmod 755 /etc/init.d/signal_poll"
 "$ADB" shell "ln -sf ../init.d/signal_poll /etc/rc5.d/S98signal_poll"

@@ -8,9 +8,15 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 printf 'Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\n\r\n'
 
 g() { uci get "$1" 2>/dev/null; }
-MODEL=$(g product.info.product_name); [ -z "$MODEL" ] && MODEL=M7350
-FWV=$(g product.info.firmware_ver)
-FWB=$(g product.info.firmware_ver_build)
+
+# ---- Custom branding (edit these to rebrand the About page) --------------
+BRAND_MODEL="M7350 Extreme"
+BRAND_FW="Extreme 2.0.0 (base 1.1.3 Build 161226)"
+# --------------------------------------------------------------------------
+
+MODEL="$BRAND_MODEL"
+FWV="$BRAND_FW"
+FWB=""
 HW=$(g product.info.hardware_ver)
 REG=$(g product.info.product_region)
 IMEI=$(g product.lte.imei)
@@ -22,9 +28,18 @@ IMSI=$(g sim_msisdn.msisdn.imsi); [ "$IMSI" = "0" ] && IMSI=""
 SIM=$(g sim_msisdn.msisdn.simNumber); [ "$SIM" = "0" ] && SIM=""
 
 # Operator / APN / radio config (all from UCI -- safe, no AT).
-OPER=$(g isp_profile.profile_isp_data.isp_name)
 MCC=$(g isp_profile.profile_isp_data.mcc)
 MNC=$(g isp_profile.profile_isp_data.mnc)
+# Real operator by MCC/MNC (isp_name is repurposed for the OLED, so don't use it
+# here). Falls back to isp_name for networks not in this small UK-focused map.
+case "$MCC-$MNC" in
+  234-20) OPER="Three (SMARTY)" ;;
+  234-30|234-33|234-34|234-86) OPER="EE" ;;
+  234-15) OPER="Vodafone" ;;
+  234-10|234-11|234-02) OPER="O2" ;;
+  234-50) OPER="JT" ;;
+  *) OPER=$(g isp_profile.profile_isp_data.isp_name) ;;
+esac
 APN=$(g isp_profile.profile_isp_data_1.apn_name_v4)
 PREF=$(g 4g_network.network_mode.preferred_network)
 case "$PREF" in
@@ -32,5 +47,6 @@ case "$PREF" in
   3) NETMODE="LTE only" ;; 4) NETMODE="LTE/WCDMA" ;; *) NETMODE="$PREF" ;;
 esac
 
-printf '{"model":"%s","firmware":"%s %s","hardware":"%s(%s) v%s","imei":"%s","imsi":"%s","sim":"%s","mac":"%s","operator":"%s","mccmnc":"%s%s","apn":"%s","netmode":"%s"}' \
-  "$MODEL" "$FWV" "$FWB" "$MODEL" "$REG" "$HW" "$IMEI" "$IMSI" "$SIM" "$MAC" "$OPER" "$MCC" "$MNC" "$APN" "$NETMODE"
+BASE=$(g product.info.product_name); [ -z "$BASE" ] && BASE=M7350
+printf '{"model":"%s","firmware":"%s","hardware":"%s(%s) v%s","imei":"%s","imsi":"%s","sim":"%s","mac":"%s","operator":"%s","mccmnc":"%s%s","apn":"%s","netmode":"%s"}' \
+  "$MODEL" "$FWV" "$BASE" "$REG" "$HW" "$IMEI" "$IMSI" "$SIM" "$MAC" "$OPER" "$MCC" "$MNC" "$APN" "$NETMODE"

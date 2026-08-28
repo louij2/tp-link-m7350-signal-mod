@@ -16,6 +16,11 @@ WAN=$(ip -4 addr show rmnet0 2>/dev/null | grep -o 'inet [0-9.]*' | head -1 | cu
 
 if iptables -t mangle -S POSTROUTING 2>/dev/null | grep -q 'ttl-set'; then TTL=on; else TTL=off; fi
 if pgrep adbd >/dev/null 2>&1; then ADBST=on; else ADBST=off; fi
+if netstat -ltn 2>/dev/null | grep -q ':21 '; then FTP=on; else FTP=off; fi
+if netstat -ltn 2>/dev/null | grep -q ':23 '; then TELNET=on; else TELNET=off; fi
+if netstat -ltn 2>/dev/null | grep -q ':22 '; then SSH=on; else SSH=off; fi
+BATT=$(uci get battery.battery_mgr.power_level 2>/dev/null)
+CHG=$(uci get battery.battery_mgr.is_charging 2>/dev/null)
 
-printf '{"uptime":"%s","temp":"%s","load":"%s","memtotal":"%s","memfree":"%s","wan":"%s","ttl":"%s","adb":"%s"}' \
-  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST"
+printf '{"uptime":"%s","temp":"%s","load":"%s","memtotal":"%s","memfree":"%s","wan":"%s","ttl":"%s","adb":"%s","ftp":"%s","telnet":"%s","ssh":"%s","battery":"%s","charging":"%s"}' \
+  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG"

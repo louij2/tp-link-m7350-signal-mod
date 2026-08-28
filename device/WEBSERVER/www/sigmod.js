@@ -44,6 +44,17 @@
     '.container,.statusPage,.section,.section-status,.popup,.help-popup,.panel,.box,[class*="section"],[class*="Section"],[class*="panel"],[class*="-box"],[class*="card"]{background:#171b21!important;color:#e6edf3!important;border-color:#2a313b!important;box-shadow:none!important;background-image:none!important;}',
     '.connectionSection,.wifiSection,.statisticsSection,.dataSection,#statusContent,#statusContent>div{background:#171b21!important;border-color:#2a313b!important;}',
     '.statusPage>div,.statusPage .container,#content .container>div{background:#171b21!important;border-color:#2a313b!important;}',
+    /* --- Status-page redesign: card-ify stock sections, cut whitespace so the
+       stock content matches the mod cards. --- */
+    '.statusPage{padding:0!important;margin:0!important;}',
+    '.statusHeader{font-size:12px!important;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;font-weight:600;margin:0 0 10px!important;padding:0 0 8px!important;border-bottom:1px solid #2a313b!important;}',
+    '.statusPage .content-group{margin:0 0 6px!important;padding:0!important;min-height:0!important;line-height:1.4!important;}',
+    '.statusPage .content-group:last-child{margin-bottom:0!important;}',
+    '.statusPage .content-label{color:#9aa4b2!important;min-width:150px;display:inline-block;}',
+    /* each visible stock section gets the mod card look */
+    '.statusPage>div:not(.icon-help):not(.help-popup){background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;margin:0 0 12px!important;box-shadow:none!important;}',
+    '.statusPage .section,.statusPage .container,.statusPage>div>div{min-height:0!important;}',
+    'a.icon-help,.icon-help{border:0!important;background:transparent!important;padding:0!important;margin:0!important;}',
     /* Bootstrap components used across Advanced/Wizard/SMS -- force dark so no
      * light-on-light text remains anywhere ("consider all objects"). */
     '.nav,.nav-list,.accordion,.accordion-group,.accordion-inner,.accordion-heading,.well,.hero-unit,.thumbnail,.input-append,.input-prepend,.btn-group,.breadcrumb,.pagination,.pager,.list-group,.list-group-item,.tab-content,.tab-pane,.modal,.modal-body,.modal-header,.modal-footer,.popover,.popover-content,.popover-title,.dropdown-menu,.dropdown-toggle,.submenu,.sub-menu,.menu,.leftMenu,.left-menu,fieldset{background:#171b21!important;color:#e6edf3!important;border-color:#2a313b!important;background-image:none!important;box-shadow:none!important;}',
@@ -134,7 +145,9 @@
     power:   '<path d="M13 3h-2v9h2zM7.1 6.3 5.7 4.9A9 9 0 1 0 18.3 4.9l-1.4 1.4a7 7 0 1 1-9.8 0z"/>',
     reboot:  '<path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/>',
     usb:     '<path d="M15 7V3h-2v4h-1l2 3v6.2a2 2 0 1 0 2 0V13l3-2v-2h1V6h-3v3h1l-2 1V7zm-6 4H7V9L4 12l3 3v-2h2l2 3v3.2a2 2 0 1 0 2 0V15z"/>',
-    shield:  '<path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5zm-1 13-3-3 1.4-1.4L11 12.2l3.6-3.6L16 10z"/>'
+    shield:  '<path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5zm-1 13-3-3 1.4-1.4L11 12.2l3.6-3.6L16 10z"/>',
+    battery: '<path d="M4 8h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2zm0 2v4h14v-4zm18 1h1v2h-1z"/>',
+    bolt:    '<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>'
   };
 
   function svg(name, size) {
@@ -288,6 +301,7 @@
         stat('up', 'Upload', 'spUl') +
         stat('clock', 'Latency', 'spLat') +
         stat('thermo', 'Temp', 'spTemp') +
+        stat('battery', 'Battery', 'spBatt') +
         stat('clock', 'Uptime', 'spUp') +
         stat('globe', 'WAN IP', 'spWan') +
       '</div>';
@@ -311,8 +325,8 @@
       '<div class="content-label" style="margin-top:8px;font-size:11px;">' +
         'TTL-fix pins outgoing TTL to 65 (helps tethering on SMARTY/Three). ' +
         'ADB = USB debug bridge. FTP/Telnet serve the whole filesystem on the ' +
-        'LAN side only (192.168.0.1) — handy for file access, but leave them off ' +
-        'when not in use.</div>';
+        'LAN side only — handy for file access, but leave them off when not in ' +
+        'use. SSH (key-only) is also available on the LAN for secure access.</div>';
 
     var about = document.createElement('div');
     about.className = 'sigmod-card';
@@ -381,6 +395,8 @@
         setPill('pillTelnet', d.telnet);
         var w = document.getElementById('spWan'); if (w) w.textContent = d.wan || '--';
         var t = document.getElementById('spTemp'); if (t && d.temp) t.textContent = d.temp + ' °C';
+        var bt = document.getElementById('spBatt');
+        if (bt && d.battery) bt.textContent = d.battery + '%' + (d.charging === '1' ? ' ⚡' : '');
       } catch (e) {}
     };
     x.open('GET', CGI_SYS + '?t=' + (new Date()).getTime(), true);

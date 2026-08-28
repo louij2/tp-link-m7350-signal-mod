@@ -32,7 +32,7 @@
   var CGI_DEV    = '/cgi-bin/deviceinfo.sh';
 
   // Custom device name (AirPort-style). Change this to rebrand the UI.
-  var MODEL = 'M7350 Extreme';
+  var MODEL = 'M7350+ Extreme';
 
   /* ==================================================================== *
    * Dark theme                                                           *

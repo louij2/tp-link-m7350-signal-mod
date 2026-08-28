@@ -1,0 +1,65 @@
+#! /bin/sh
+# LTE signal-stats poller for the TP-Link M7350 web-UI mod.
+# Makes the modem AT channel world-writable, then starts the polling daemon
+# that caches signal metrics to /tmp/signal.json for the CGI endpoint.
+# Installed as /etc/init.d/signal_poll, linked from /etc/rc5.d/S98signal_poll.
+#
+# NOTE: this device's busybox 1.18.5 start-stop-daemon is unusable for a shell
+# daemon here -- with "-x /usr/bin/signal_poll.sh" it self-matches its own argv
+# and skips the start. We launch with setsid (new session, survives the adb
+# shell / init disconnect) and find the PID by scanning /proc, excluding self.
+
+DAEMON=/usr/bin/signal_poll.sh
+SMD=/dev/smd7
+
+# Print PIDs of running daemon instances (one per line), never our own shell.
+sig_pids() {
+  me=$$
+  for d in /proc/[0-9]*; do
+    p=${d##*/}
+    [ "$p" = "$me" ] && continue
+    grep -qs "$DAEMON" "$d/cmdline" 2>/dev/null && echo "$p"
+  done
+}
+
+case "$1" in
+  start)
+    echo -n "Starting signal_poll: "
+    [ -e "$SMD" ] && chmod 666 "$SMD"
+    if [ -n "$(sig_pids)" ]; then
+      echo "already running"
+      exit 0
+    fi
+    # setsid detaches into its own session; nohup ignores SIGHUP so the daemon
+    # also survives a manual "adb shell" launch (adbd SIGHUPs descendants on
+    # disconnect). The daemon redirects its own stdio, so nothing blocks here.
+    nohup setsid "$DAEMON" </dev/null >/dev/null 2>&1 &
+    echo "done"
+    ;;
+  stop)
+    echo -n "Stopping signal_poll: "
+    p=$(sig_pids)
+    [ -n "$p" ] && kill $p 2>/dev/null
+    echo "done"
+    ;;
+  restart)
+    "$0" stop
+    sleep 1
+    "$0" start
+    ;;
+  status)
+    p=$(sig_pids)
+    if [ -n "$p" ]; then
+      echo "signal_poll running (pid $p)"
+    else
+      echo "signal_poll not running"
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Usage: signal_poll { start | stop | restart | status }" >&2
+    exit 1
+    ;;
+esac
+
+exit 0

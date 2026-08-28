@@ -1,0 +1,105 @@
+/* M7350 modern dark theme -------------------------------------------------
+ * Loaded from the <head> of login.html and settings.html (after the stock
+ * stylesheets) so these overrides win. Pure restyle: no markup changes.
+ * Palette is a modern slate/blue dark scheme. */
+
+:root {
+  --dk-bg:      #0f1216;
+  --dk-panel:   #171b21;
+  --dk-panel2:  #1d232c;
+  --dk-border:  #2a313b;
+  --dk-text:    #e6edf3;
+  --dk-muted:   #9aa4b2;
+  --dk-accent:  #38bdf8;
+  --dk-green:   #34d399;
+}
+
+html, body {
+  background: var(--dk-bg) !important;
+  color: var(--dk-text) !important;
+}
+
+/* Layout containers ----------------------------------------------------- */
+#content, #loginPage, #loginContainer, #login, #noteDiv,
+.tabCover, .clearfix {
+  background: transparent !important;
+}
+
+/* Cards / panels -------------------------------------------------------- */
+.container, .statusPage, .section, .section-status, .popup, .help-popup,
+.panel, .box, [class*="section"], [class*="panel"], [class*="-box"],
+[class*="card"] {
+  background: var(--dk-panel) !important;
+  color: var(--dk-text) !important;
+  border-color: var(--dk-border) !important;
+  box-shadow: none !important;
+}
+
+/* The status view uses inner boxes inside .container; give them contrast. */
+.statusPage > div, .statusPage .container, #content .container > div {
+  background: var(--dk-panel) !important;
+  border-color: var(--dk-border) !important;
+}
+
+/* Header + tab bar ------------------------------------------------------ */
+#header, #top_layout, #top_layout .container {
+  background: var(--dk-panel2) !important;
+  color: var(--dk-text) !important;
+  border-bottom: 1px solid var(--dk-border) !important;
+}
+.tabs, .tabs li, ul.tabs {
+  background: transparent !important;
+}
+.tabs li.active, li.active, #tabStatus.active {
+  background: var(--dk-accent) !important;
+  color: #04121a !important;
+}
+
+/* Text ------------------------------------------------------------------ */
+label, span, td, th, li, p, h1, h2, h3, h4, h5, dt, dd, div, strong, b {
+  color: var(--dk-text);
+}
+.content-label, .muted, small, .note, #noteDiv {
+  color: var(--dk-muted) !important;
+}
+a, a:visited { color: var(--dk-accent) !important; }
+a:hover { color: #7dd3fc !important; }
+
+/* Keep icons/glyphs from being painted as panels */
+i, em, .icon, [class^="icon-"], [class*=" icon-"], img {
+  background: transparent !important;
+}
+
+/* Inputs ---------------------------------------------------------------- */
+input, select, textarea, .loginInput {
+  background: #0f1216 !important;
+  color: var(--dk-text) !important;
+  border: 1px solid var(--dk-border) !important;
+}
+input::-webkit-input-placeholder { color: var(--dk-muted) !important; }
+
+/* Buttons --------------------------------------------------------------- */
+.btn, button {
+  background: var(--dk-panel2) !important;
+  color: var(--dk-text) !important;
+  border: 1px solid var(--dk-border) !important;
+}
+.btn-success {
+  background: var(--dk-green) !important;
+  border-color: transparent !important;
+  color: #04120a !important;
+}
+.btn-info, .btn-primary {
+  background: var(--dk-accent) !important;
+  border-color: transparent !important;
+  color: #04121a !important;
+}
+
+/* Only the connection-state VALUE stays green (not the "...Status" labels,
+ * whose ids also contain "Status"). */
+#connectionStatus, #connection { color: var(--dk-green) !important; }
+.content-label { color: var(--dk-muted) !important; }
+
+/* Signal-mod rows inherit the theme automatically (they use .content-group
+ * / .content-label), but pin the value colour so it never goes dark-on-dark. */
+#sigRsrp, #sigBand { color: var(--dk-text) !important; }

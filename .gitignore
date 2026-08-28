@@ -1,0 +1,3 @@
+backup-*/
+*.orig
+.DS_Store

@@ -10,7 +10,7 @@ printf 'Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nCach
 g() { uci get "$1" 2>/dev/null; }
 
 # ---- Custom branding (edit these to rebrand the About page) --------------
-BRAND_MODEL="M7350 Extreme"
+BRAND_MODEL="M7350+"
 BRAND_FW="Extreme 2.0.0 (base 1.1.3 Build 161226)"
 # --------------------------------------------------------------------------
 

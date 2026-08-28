@@ -1,0 +1,1 @@
+{"uptime":"184230","temp":"43","load":"0.31","memtotal":"124352","memfree":"38210","wan":"10.114.22.87","ttl":"on","adb":"on","ftp":"off","telnet":"off","ssh":"on","battery":"87","charging":"1","wifi":"on"}

@@ -2,6 +2,45 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [Unreleased]
+
+### Security
+- **Subscriber identifiers are no longer served unauthenticated.** `deviceinfo.sh`
+  returned IMEI, IMSI and the SIM's phone number to anyone who could reach the
+  device's web port — an IMSI identifies a subscriber, not just a handset. Those
+  three fields are now gated on the same `X-Auth` password as `control.sh` and
+  redacted otherwise, including when no password is configured (fail closed).
+  Everything else in the About card stays open, and the withheld fields render as
+  a click-to-unlock `locked` in the UI.
+
+### Changed
+- **Status tab is a dashboard grid.** Stock sections and the mod's own cards pack
+  as siblings in one masonry layout, so the page fits on a screen instead of
+  scrolling, and short cards no longer leave dead space. Implemented purely in
+  CSS via `display:contents` — no DOM is moved, so every stock row keeps its
+  element, its id and its firmware updates.
+- **`deploy.sh` works over SSH** when the device is not on USB, picking the
+  transport automatically. `M7350_SSH_TARGET` accepts a `~/.ssh/config` alias.
+- **LTE watchdog backstop is disarmed unless the device advertises it.**
+  `qcmap_method_bring_up_wwan` was never verified, and a wrong operation code
+  would drop the data call; the watchdog now probes `ubus -v list qcmap` first
+  and otherwise runs autoconnect-only. Also self-tests `ping -W` support, backs
+  off to 5 minutes between actions, and logs to `/tmp/lte_reconnect.log`.
+
+### Added
+- **`tools/mock/`** — a local render harness that runs the real `sigmod.js`
+  against a mock of the stock page, so UI work needs no device. The `docs/`
+  screenshots come from it, with synthetic data only.
+- **`network_select.sh`** — reports and restores automatic network selection
+  (`AT+COPS`). A manual COPS selection reads as "No service" at full signal.
+- **`scripts/verify-lte-reconnect.sh`** — read-only probe of the modem's ubus
+  methods and link state, to check the watchdog before arming it.
+
+### Fixed
+- **Signal bars were invisible.** The generic `i{background-color:transparent
+  !important}` glyph reset beat the non-important `.sigmod-bars i` rule — a
+  non-important declaration loses to an important one whatever its specificity.
+
 ## [2.1.0] — 2026-08-28  ·  **security release (recommended)**
 
 Hardens the optional root-access features from 2.0.0. **Use this, not 2.0.0, for

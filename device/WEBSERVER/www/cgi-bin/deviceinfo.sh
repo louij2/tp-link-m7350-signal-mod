@@ -4,7 +4,24 @@
 # no per-device PII is ever hardcoded in the repo. IMSI / SIM number are only
 # populated here if the daemon's optional AT cache (/tmp/deviceinfo.json with
 # {"imsi":"...","sim":"..."}) exists; otherwise they come back empty.
+#
+# AUTH: IMEI / IMSI / SIM number are subscriber identifiers, not device trivia --
+# an IMSI is enough to identify and track a subscriber. They are therefore
+# returned ONLY to a caller that presents the control password (X-Auth, same
+# gate as control.sh), and are redacted for everyone else, including when no
+# password is configured. Everything else (model, firmware, MAC, operator, APN)
+# stays open so the About card still renders without a prompt. When the fields
+# are withheld the response carries "locked":"1" so the UI can offer to unlock.
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+PWFILE=/etc/signalmod.pw
+AUTHED=0
+if [ -s "$PWFILE" ]; then
+  supplied="$HTTP_X_AUTH"
+  [ -z "$supplied" ] && supplied=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*[?&]auth=\([^&]*\).*/\1/p')
+  [ "$supplied" = "$(cat "$PWFILE" 2>/dev/null)" ] && AUTHED=1
+fi
+
 printf 'Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\n\r\n'
 
 g() { uci get "$1" 2>/dev/null; }
@@ -48,5 +65,11 @@ case "$PREF" in
 esac
 
 BASE=$(g product.info.product_name); [ -z "$BASE" ] && BASE=M7350
-printf '{"model":"%s","firmware":"%s","hardware":"%s(%s) v%s","imei":"%s","imsi":"%s","sim":"%s","mac":"%s","operator":"%s","mccmnc":"%s%s","apn":"%s","netmode":"%s"}' \
-  "$MODEL" "$FWV" "$BASE" "$REG" "$HW" "$IMEI" "$IMSI" "$SIM" "$MAC" "$OPER" "$MCC" "$MNC" "$APN" "$NETMODE"
+# Withhold the subscriber identifiers unless the caller authenticated.
+LOCKED=0
+if [ "$AUTHED" != 1 ]; then
+  IMEI=""; IMSI=""; SIM=""; LOCKED=1
+fi
+
+printf '{"model":"%s","firmware":"%s","hardware":"%s(%s) v%s","imei":"%s","imsi":"%s","sim":"%s","mac":"%s","operator":"%s","mccmnc":"%s%s","apn":"%s","netmode":"%s","locked":"%s"}' \
+  "$MODEL" "$FWV" "$BASE" "$REG" "$HW" "$IMEI" "$IMSI" "$SIM" "$MAC" "$OPER" "$MCC" "$MNC" "$APN" "$NETMODE" "$LOCKED"

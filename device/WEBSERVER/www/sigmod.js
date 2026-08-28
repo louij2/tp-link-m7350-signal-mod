@@ -385,7 +385,16 @@
     fetchDeviceInfo();
   }
 
-  function fetchDeviceInfo() {
+  // IMEI / IMSI / SIM come back redacted unless we present the control password,
+  // so send it when we have one and offer a one-click unlock when we do not.
+  function unlockAbout() {
+    var p = window.prompt('Control password (to show IMEI / IMSI / SIM):');
+    if (p === null) return;
+    try { sessionStorage.setItem('sigmodPw', p); } catch (e) {}
+    fetchDeviceInfo(p);
+  }
+
+  function fetchDeviceInfo(pw) {
     var x = new XMLHttpRequest();
     x.onload = function () {
       try {
@@ -394,9 +403,26 @@
         set('abModel', d.model); set('abFw', d.firmware); set('abHw', d.hardware);
         set('abImei', d.imei); set('abMac', d.mac); set('abImsi', d.imsi); set('abSim', d.sim);
         set('abOper', d.operator + (d.mccmnc ? ' (' + d.mccmnc + ')' : '')); set('abApn', d.apn); set('abNet', d.netmode);
+
+        var ids = ['abImei', 'abImsi', 'abSim'];
+        for (var i = 0; i < ids.length; i++) {
+          var e = document.getElementById(ids[i]);
+          if (!e) continue;
+          if (d.locked === '1') {
+            e.textContent = 'locked';
+            e.style.cursor = 'pointer';
+            e.style.color = '#9aa4b2';
+            e.title = 'Click to unlock with the control password';
+            e.onclick = unlockAbout;
+          } else {
+            e.style.cursor = ''; e.style.color = ''; e.title = ''; e.onclick = null;
+          }
+        }
       } catch (e) {}
     };
     x.open('GET', CGI_DEV + '?t=' + (new Date()).getTime(), true);
+    var use = (pw != null) ? pw : storedPw();
+    if (use) x.setRequestHeader('X-Auth', use);
     x.send();
   }
 

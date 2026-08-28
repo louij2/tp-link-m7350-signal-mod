@@ -21,6 +21,7 @@ if netstat -ltn 2>/dev/null | grep -q ':23 '; then TELNET=on; else TELNET=off; f
 if netstat -ltn 2>/dev/null | grep -q ':22 '; then SSH=on; else SSH=off; fi
 BATT=$(uci get battery.battery_mgr.power_level 2>/dev/null)
 CHG=$(uci get battery.battery_mgr.is_charging 2>/dev/null)
+WIFI=$(ubus call wlan_object wlan_get_switch 2>/dev/null | sed -n 's/.*"wlan": *"\([a-z]*\)".*/\1/p')
 
-printf '{"uptime":"%s","temp":"%s","load":"%s","memtotal":"%s","memfree":"%s","wan":"%s","ttl":"%s","adb":"%s","ftp":"%s","telnet":"%s","ssh":"%s","battery":"%s","charging":"%s"}' \
-  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG"
+printf '{"uptime":"%s","temp":"%s","load":"%s","memtotal":"%s","memfree":"%s","wan":"%s","ttl":"%s","adb":"%s","ftp":"%s","telnet":"%s","ssh":"%s","battery":"%s","charging":"%s","wifi":"%s"}' \
+  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG" "$WIFI"

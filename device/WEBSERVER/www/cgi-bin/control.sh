@@ -36,6 +36,11 @@ tel_state() { netstat -ltn 2>/dev/null | grep -q ':23 ' && echo on || echo off; 
 tel_on()  { tel_state | grep -q on || { setsid telnetd -l /bin/sh </dev/null >/dev/null 2>&1 & } ; }
 tel_off() { pkill telnetd 2>/dev/null; }
 
+# --- Wi-Fi AP on/off (via the QCMAP wlan_object ubus) ----------------------
+wifi_state() { ubus call wlan_object wlan_get_switch 2>/dev/null | sed -n 's/.*"wlan": *"\([a-z]*\)".*/\1/p'; }
+wifi_on()  { ubus call wlan_object wlan_set_switch '{"switch":"on"}'  >/dev/null 2>&1; }
+wifi_off() { ubus call wlan_object wlan_set_switch '{"switch":"off"}' >/dev/null 2>&1; }
+
 ttl_state() {
   iptables -t mangle -S POSTROUTING 2>/dev/null | grep -q 'ttl-set' && echo on || echo off
 }
@@ -78,5 +83,8 @@ case "$A" in
   telnet_on)  tel_on;  sleep 1; printf '{"ok":true,"telnet":"%s"}' "$(tel_state)" ;;
   telnet_off) tel_off; printf '{"ok":true,"telnet":"%s"}' "$(tel_state)" ;;
   telnet_status) printf '{"telnet":"%s"}' "$(tel_state)" ;;
+  wifi_on)  wifi_on;  sleep 1; printf '{"ok":true,"wifi":"%s"}' "$(wifi_state)" ;;
+  wifi_off) wifi_off; printf '{"ok":true,"wifi":"off"}' ;;
+  wifi_status) printf '{"wifi":"%s"}' "$(wifi_state)" ;;
   *) printf '{"error":"unknown action"}' ;;
 esac

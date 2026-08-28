@@ -1,9 +1,14 @@
 # TP-Link M7350 — LTE signal stats + dark UI mod
 
+> **Use [v2.1.0](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
+> later.** v2.0.0 shipped the optional root tools (FTP/Telnet/web console) with
+> **no authentication** — it's fine for isolated testing, but v2.1.0 adds a
+> password gate on all of them and should be used for anything real.
+
 Add **live LTE signal metrics** (RSRP, RSRQ, RSSI, EARFCN, Band) and a **modern
 dark theme** to the web UI of a TP-Link M7350 v3 portable 4G router — no firmware
 reflash, just files dropped onto the device over ADB. Optionally add a
-browser-based **root console** for deep debugging.
+browser-based **root console** (password-gated) for deep debugging.
 
 This is handy when the M7350 is used as a **USB-tether uplink** (e.g. into a
 GL.iNet router): you can watch signal quality and the serving band straight from

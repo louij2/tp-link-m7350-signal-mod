@@ -15,7 +15,7 @@ say "Stopping + removing the signal daemon..."
 "$ADB" shell "rm -f /etc/rc5.d/S98signal_poll /etc/init.d/signal_poll /usr/bin/signal_poll.sh /tmp/signal.json"
 
 say "Removing web assets + CGI..."
-"$ADB" shell "rm -f $WWW/sigmod.js $WWW/darkmode.css $WWW/console.html $WWW/cgi-bin/signal_stats.sh $WWW/cgi-bin/exec.sh"
+"$ADB" shell "rm -f $WWW/sigmod.js $WWW/darkmode.css $WWW/console.html $WWW/cgi-bin/signal_stats.sh $WWW/cgi-bin/metrics.sh $WWW/cgi-bin/exec.sh"
 
 say "Restoring stock pages from .bak..."
 for f in login.html status.html settings.html; do

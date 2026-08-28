@@ -66,8 +66,24 @@ earfcn_to_band() {
   fi
 }
 
+# WAN interface carrying the uplink (the default route's device).
+wan_iface() {
+  ip route 2>/dev/null | awk '/^default/{print $5; exit}'
+}
+
+# Echo "rx_bytes tx_bytes" for the given interface from /proc/net/dev.
+iface_bytes() {
+  line=$(grep "$1:" /proc/net/dev 2>/dev/null | head -1)
+  [ -z "$line" ] && { echo "0 0"; return; }
+  vals=${line#*:}
+  set -- $vals
+  echo "$1 ${9}"
+}
+
+PING_TARGET=1.1.1.1
 select_channel
 empty_streak=0
+prev_rx=""; prev_tx=""; prev_t=""
 
 while true; do
   if [ -z "$SMD" ]; then
@@ -112,7 +128,23 @@ while true; do
     empty_streak=0
   fi
 
-  printf '{"rsrp":"%s","rsrq":"%s","rssi":"%s","earfcn":"%s","band":"%s","mode":"%s"}' \
-    "$RSRP" "$RSRQ" "$RSSI" "$EARFCN" "$BAND" "$MODE" > /tmp/signal.json
+  # ---- Non-AT telemetry (safe; never touches the modem channel) ----------
+  WAN=$(wan_iface); [ -z "$WAN" ] && WAN=rmnet0
+  set -- $(iface_bytes "$WAN"); RX=$1; TX=$2
+  NOW=$(cut -d' ' -f1 /proc/uptime 2>/dev/null)
+  UPTIME=$(cut -d. -f1 /proc/uptime 2>/dev/null)
+
+  DL_KBPS=""; UL_KBPS=""
+  if [ -n "$prev_t" ]; then
+    DL_KBPS=$(awk -v a="$RX" -v b="$prev_rx" -v t0="$prev_t" -v t1="$NOW" 'BEGIN{dt=t1-t0; d=a-b; if(dt>0 && d>=0) printf "%.0f", d*8/1000/dt; else print ""}')
+    UL_KBPS=$(awk -v a="$TX" -v b="$prev_tx" -v t0="$prev_t" -v t1="$NOW" 'BEGIN{dt=t1-t0; d=a-b; if(dt>0 && d>=0) printf "%.0f", d*8/1000/dt; else print ""}')
+  fi
+  prev_rx=$RX; prev_tx=$TX; prev_t=$NOW
+
+  # Uplink latency (empty when the link is down).
+  LAT=$(ping -c1 -W1 "$PING_TARGET" 2>/dev/null | grep -oE 'time=[0-9.]+' | head -1 | cut -d= -f2)
+
+  printf '{"rsrp":"%s","rsrq":"%s","rssi":"%s","earfcn":"%s","band":"%s","mode":"%s","dl_kbps":"%s","ul_kbps":"%s","latency_ms":"%s","uptime":"%s","rx_bytes":"%s","tx_bytes":"%s"}' \
+    "$RSRP" "$RSRQ" "$RSSI" "$EARFCN" "$BAND" "$MODE" "$DL_KBPS" "$UL_KBPS" "$LAT" "$UPTIME" "$RX" "$TX" > /tmp/signal.json
   sleep 5
 done

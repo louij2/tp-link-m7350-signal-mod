@@ -20,7 +20,10 @@ GL.iNet router): you can watch signal quality and the serving band straight from
 | Feature | Where |
 |---|---|
 | RSRP / RSRQ / RSSI, EARFCN, LTE **Band** (derived) | Login page status block **and** the post-login **Status** tab, under *Connection Status* |
-| Modern dark theme | Whole web UI (login + admin) |
+| Colour-coded **signal-quality bar** | Same status views |
+| Live **throughput** (↓/↑) + **latency** + **uptime** | Same status views |
+| **Prometheus** metrics endpoint (for Grafana) | `http://192.168.0.1/cgi-bin/metrics.sh` |
+| Modern dark theme (keeps the stock icons/logo) | Whole web UI (login + admin) |
 | Root web console (optional) | `http://192.168.0.1/console.html` |
 | Survives reboot | Daemon auto-starts via a SysV init script; all files live on persistent NAND |
 
@@ -125,11 +128,22 @@ AT+CSQ       -> RSSI (derived: -113 + 2*CSQ)
 AT$QCSYSMODE -> LTE / WCDMA / GSM
 ```
 
-It derives the **LTE band** from the EARFCN and writes `/tmp/signal.json`:
+It derives the **LTE band** from the EARFCN, adds **non-AT telemetry** (WAN
+throughput from `/proc/net/dev`, uplink latency via `ping`, and uptime), and
+writes `/tmp/signal.json`:
 
 ```json
-{"rsrp":"-082.70","rsrq":"-06.50","rssi":"-53","earfcn":"1363","band":"3","mode":"LTE"}
+{"rsrp":"-082.70","rsrq":"-06.50","rssi":"-53","earfcn":"1363","band":"3","mode":"LTE",
+ "dl_kbps":"3074","ul_kbps":"5271","latency_ms":"17.885","uptime":"31060",
+ "rx_bytes":"116736962","tx_bytes":"62990116"}
 ```
+
+### Prometheus / Grafana
+
+`cgi-bin/metrics.sh` re-exposes that cache in Prometheus text format
+(`m7350_rsrp_dbm`, `m7350_downlink_kbps`, `m7350_latency_ms`, …). Point a
+Prometheus scrape at `http://<router>/cgi-bin/metrics.sh` and graph your uplink
+in Grafana. It only reads the cache — no privileged access.
 
 The CGI (`cgi-bin/signal_stats.sh`) just `cat`s that cache with a JSON content
 type. **Reading the AT channel directly from a CGI blocks and kills lighttpd** —
@@ -221,6 +235,7 @@ device/
   usr/bin/signal_poll.sh                 signal polling daemon (AT -> /tmp/signal.json)
   etc/init.d/signal_poll                 SysV init script (boot start)
   WEBSERVER/www/cgi-bin/signal_stats.sh  serves the cached JSON
+  WEBSERVER/www/cgi-bin/metrics.sh       Prometheus metrics endpoint
   WEBSERVER/www/cgi-bin/exec.sh          root web-console backend (opt-in)
   WEBSERVER/www/sigmod.js                head-loaded UI injector + inline dark theme
   WEBSERVER/www/darkmode.css             dark theme (standalone copy)
@@ -254,6 +269,15 @@ scripts/
   the theme as an inline `<style>` in the head.
 - **CSS `[class*="section"]` is case-sensitive** → camelCase `…Section` cards
   need `[class*="Section"]`.
+- **Don't `background: transparent` icons in a dark theme.** The stock UI draws
+  every icon *and* the TP-LINK logo from one CSS sprite
+  (`[class^=icon-]{background-image:url(images/sprites.png)}`); a `background`
+  reset erases the image and the per-icon `background-position`, so all icons
+  vanish. Leave `.icon-*` backgrounds untouched.
+- **Heavy USB traffic can drop the RNDIS+ADB composition.** Sustained transfers
+  destabilised the gadget and dropped ADB (and, with `persist.usb.config`
+  empty, it came back without the ADB function). The RNDIS tether and web UI
+  kept working. Don't stress-test throughput over the ADB link.
 - **busybox `start-stop-daemon -x <script>` self-matches its own argv** → use
   `nohup setsid` + a `/proc` scan that excludes `$$`.
 - **A `/proc` scan that greps for the daemon path matches the scanning shell

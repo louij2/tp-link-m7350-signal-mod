@@ -65,10 +65,11 @@ label, span, td, th, li, p, h1, h2, h3, h4, h5, dt, dd, div, strong, b {
 a, a:visited { color: var(--dk-accent) !important; }
 a:hover { color: #7dd3fc !important; }
 
-/* Keep icons/glyphs from being painted as panels */
-i, em, .icon, [class^="icon-"], [class*=" icon-"], img {
-  background: transparent !important;
-}
+/* NOTE: do NOT reset the background on .icon-* elements. The stock UI draws all
+ * icons and the TP-LINK logo from a CSS sprite
+ * ([class^=icon-]{background-image:url(images/sprites.png)}); a
+ * `background: transparent` override erases the image AND the per-icon
+ * background-position, wiping every icon. Leave icon backgrounds alone. */
 
 /* Inputs ---------------------------------------------------------------- */
 input, select, textarea, .loginInput {
@@ -102,4 +103,4 @@ input::-webkit-input-placeholder { color: var(--dk-muted) !important; }
 
 /* Signal-mod rows inherit the theme automatically (they use .content-group
  * / .content-label), but pin the value colour so it never goes dark-on-dark. */
-#sigRsrp, #sigBand { color: var(--dk-text) !important; }
+#sigRsrp, #sigBand, #sigThru, #sigNet { color: var(--dk-text) !important; }

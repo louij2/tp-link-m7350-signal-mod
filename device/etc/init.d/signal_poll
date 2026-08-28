@@ -34,6 +34,14 @@ case "$1" in
     # also survives a manual "adb shell" launch (adbd SIGHUPs descendants on
     # disconnect). The daemon redirects its own stdio, so nothing blocks here.
     nohup setsid "$DAEMON" </dev/null >/dev/null 2>&1 &
+    # Re-apply the web-UI "TTL-fix" rule at boot if it was left enabled
+    # (control.sh drops the marker). Keeps tethering-TTL normalisation sticky.
+    if [ -f /etc/signalmod_ttl ]; then
+      WAN=$(ip route 2>/dev/null | awk '/^default/{print $5; exit}')
+      [ -z "$WAN" ] && WAN=rmnet0
+      iptables -t mangle -C POSTROUTING -o "$WAN" -j TTL --ttl-set 65 2>/dev/null \
+        || iptables -t mangle -A POSTROUTING -o "$WAN" -j TTL --ttl-set 65 2>/dev/null
+    fi
     echo "done"
     ;;
   stop)

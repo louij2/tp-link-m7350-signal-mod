@@ -302,11 +302,17 @@
           'TTL-fix <span class="sigmod-pill" id="pillTtl">--</span></span>' +
         '<span class="sigmod-btn" id="btnAdb">' + svg('usb', 16) +
           'ADB <span class="sigmod-pill" id="pillAdb">--</span></span>' +
+        '<span class="sigmod-btn" id="btnFtp">' + svg('globe', 16) +
+          'FTP <span class="sigmod-pill" id="pillFtp">--</span></span>' +
+        '<span class="sigmod-btn" id="btnTelnet">' + svg('usb', 16) +
+          'Telnet <span class="sigmod-pill" id="pillTelnet">--</span></span>' +
         '<span class="sigmod-btn danger" id="btnReboot">' + svg('reboot', 16) + 'Reboot</span>' +
       '</div>' +
       '<div class="content-label" style="margin-top:8px;font-size:11px;">' +
         'TTL-fix pins outgoing TTL to 65 (helps tethering on SMARTY/Three). ' +
-        'ADB toggles the USB debug bridge.</div>';
+        'ADB = USB debug bridge. FTP/Telnet serve the whole filesystem on the ' +
+        'LAN side only (192.168.0.1) — handy for file access, but leave them off ' +
+        'when not in use.</div>';
 
     var about = document.createElement('div');
     about.className = 'sigmod-card';
@@ -321,6 +327,9 @@
         stat('globe', 'MAC', 'abMac') +
         stat('usb', 'IMSI', 'abImsi') +
         stat('sms', 'SIM Number', 'abSim') +
+        stat('globe', 'Operator', 'abOper') +
+        stat('signal', 'APN', 'abApn') +
+        stat('advanced', 'Network Mode', 'abNet') +
       '</div>';
 
     host.appendChild(sys);
@@ -339,6 +348,7 @@
         var set = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v || '—'; };
         set('abModel', d.model); set('abFw', d.firmware); set('abHw', d.hardware);
         set('abImei', d.imei); set('abMac', d.mac); set('abImsi', d.imsi); set('abSim', d.sim);
+        set('abOper', d.operator + (d.mccmnc ? ' (' + d.mccmnc + ')' : '')); set('abApn', d.apn); set('abNet', d.netmode);
       } catch (e) {}
     };
     x.open('GET', CGI_DEV + '?t=' + (new Date()).getTime(), true);
@@ -367,6 +377,8 @@
         var d = JSON.parse(x.responseText);
         setPill('pillTtl', d.ttl);
         setPill('pillAdb', d.adb);
+        setPill('pillFtp', d.ftp);
+        setPill('pillTelnet', d.telnet);
         var w = document.getElementById('spWan'); if (w) w.textContent = d.wan || '--';
         var t = document.getElementById('spTemp'); if (t && d.temp) t.textContent = d.temp + ' °C';
       } catch (e) {}
@@ -410,6 +422,21 @@
       rb.innerHTML = svg('reboot', 16) + 'Rebooting...';
       ctl('reboot');
     };
+
+    var svc = function (btnId, pillId, name) {
+      var b = document.getElementById(btnId);
+      if (!b) return;
+      b.onclick = function () {
+        var on = document.getElementById(pillId).textContent === 'ON';
+        if (!on && !window.confirm('Start ' + name + ' with full filesystem access on the LAN (192.168.0.1)? Turn it off when done.')) return;
+        setPill(pillId, '...');
+        ctl(name.toLowerCase() + (on ? '_off' : '_on'), function (d) {
+          setPill(pillId, d[name.toLowerCase()] || (on ? 'off' : 'on'));
+        });
+      };
+    };
+    svc('btnFtp', 'pillFtp', 'FTP');
+    svc('btnTelnet', 'pillTelnet', 'Telnet');
   }
 
   function updatePanels() {

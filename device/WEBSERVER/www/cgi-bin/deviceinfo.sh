@@ -14,17 +14,23 @@ FWB=$(g product.info.firmware_ver_build)
 HW=$(g product.info.hardware_ver)
 REG=$(g product.info.product_region)
 IMEI=$(g product.lte.imei)
-IMSI=$(g product.lte.imsi); [ "$IMSI" = "0" ] && IMSI=""
-SIM=$(g product.lte.simNumber); [ "$SIM" = "0" ] && SIM=""
 MAC=$(cat /sys/class/net/br0/address 2>/dev/null | tr 'a-z' 'A-Z')
 
-# Optional AT-derived values (IMSI / SIM number) cached by the daemon.
-if [ -f /tmp/deviceinfo.json ]; then
-  ai=$(sed -n 's/.*"imsi":"\([^"]*\)".*/\1/p' /tmp/deviceinfo.json 2>/dev/null)
-  as=$(sed -n 's/.*"sim":"\([^"]*\)".*/\1/p'  /tmp/deviceinfo.json 2>/dev/null)
-  [ -n "$ai" ] && IMSI=$ai
-  [ -n "$as" ] && SIM=$as
-fi
+# IMSI / SIM number: the modem stack caches these in UCI (sim_msisdn) -- no AT
+# query needed, and no PII lands in the repo (read live from the device).
+IMSI=$(g sim_msisdn.msisdn.imsi); [ "$IMSI" = "0" ] && IMSI=""
+SIM=$(g sim_msisdn.msisdn.simNumber); [ "$SIM" = "0" ] && SIM=""
 
-printf '{"model":"%s","firmware":"%s %s","hardware":"%s(%s) v%s","imei":"%s","imsi":"%s","sim":"%s","mac":"%s"}' \
-  "$MODEL" "$FWV" "$FWB" "$MODEL" "$REG" "$HW" "$IMEI" "$IMSI" "$SIM" "$MAC"
+# Operator / APN / radio config (all from UCI -- safe, no AT).
+OPER=$(g isp_profile.profile_isp_data.isp_name)
+MCC=$(g isp_profile.profile_isp_data.mcc)
+MNC=$(g isp_profile.profile_isp_data.mnc)
+APN=$(g isp_profile.profile_isp_data_1.apn_name_v4)
+PREF=$(g 4g_network.network_mode.preferred_network)
+case "$PREF" in
+  0) NETMODE="Auto" ;; 1) NETMODE="GSM only" ;; 2) NETMODE="WCDMA only" ;;
+  3) NETMODE="LTE only" ;; 4) NETMODE="LTE/WCDMA" ;; *) NETMODE="$PREF" ;;
+esac
+
+printf '{"model":"%s","firmware":"%s %s","hardware":"%s(%s) v%s","imei":"%s","imsi":"%s","sim":"%s","mac":"%s","operator":"%s","mccmnc":"%s%s","apn":"%s","netmode":"%s"}' \
+  "$MODEL" "$FWV" "$FWB" "$MODEL" "$REG" "$HW" "$IMEI" "$IMSI" "$SIM" "$MAC" "$OPER" "$MCC" "$MNC" "$APN" "$NETMODE"

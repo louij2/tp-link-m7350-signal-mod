@@ -49,6 +49,11 @@ case "$1" in
     if [ -f /etc/signalmod_ftp ] && ! netstat -ltn 2>/dev/null | grep -q ':21 '; then
       nohup setsid tcpsvd -vE "$LANIP" 21 ftpd -w / </dev/null >/dev/null 2>&1 &
     fi
+    # OLED brand rotator (alternates the OLED operator line model <-> ISP).
+    if [ -x /usr/bin/oled_brand.sh ]; then
+      for d in /proc/[0-9]*; do grep -qs oled_brand "$d/cmdline" 2>/dev/null && oledrun=1; done
+      [ -z "$oledrun" ] && nohup setsid /usr/bin/oled_brand.sh </dev/null >/dev/null 2>&1 &
+    fi
     echo "done"
     ;;
   stop)

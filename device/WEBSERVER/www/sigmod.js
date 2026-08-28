@@ -135,8 +135,11 @@
   }
 
   /* Swap the stock sprite glyphs for SVG (idempotent). */
+  // NOTE: icon-logo is deliberately NOT swapped -- keep the stock TP-LINK logo
+  // (the sprite renders fine again now that the theme no longer wipes the icon
+  // background-image). Only the monochrome nav/login glyphs are replaced.
   var ICONMAP = {
-    'icon-logo': 'logo', 'icon-username': 'user', 'icon-password': 'lock',
+    'icon-username': 'user', 'icon-password': 'lock',
     'icon-wizard': 'wizard', 'icon-status': 'status', 'icon-sms': 'sms',
     'icon-advanced': 'advanced', 'icon-logout': 'logout'
   };

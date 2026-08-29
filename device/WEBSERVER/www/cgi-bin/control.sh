@@ -2,12 +2,18 @@
 # M7350 mod: control actions for the web UI (reboot / ADB / TTL / FTP / Telnet /
 # Wi-Fi toggles).
 #
-# AUTH: state-changing actions (*_on / *_off / reboot) require a password when
-# /etc/signalmod.pw exists (root-only, chmod 600, NOT in the repo). The client
-# sends it in the X-Auth header (or ?auth=). Status reads stay open so the panel
-# can poll without a prompt. If the password file is absent, actions are
-# unauthenticated (backwards-compatible) -- set one before exposing the device:
+# AUTH: state-changing actions (*_on / *_off / reboot / setpw) FAIL CLOSED. They
+# require /etc/signalmod.pw to exist (root-only, chmod 600, NOT in the repo) and
+# the caller to present it in the X-Auth header (or ?auth=). With no password
+# file, every mutation is refused -- including setpw, so nobody on the LAN can
+# claim an unclaimed device by setting the password first. Create it over
+# ADB/SSH, which you already have if you installed this at all:
 #   printf '%s' 'yourpassword' > /etc/signalmod.pw && chmod 600 /etc/signalmod.pw
+# Status reads stay open so the panel can poll without a prompt.
+#
+# Earlier versions fell back to unauthenticated when the file was absent. That
+# made a fresh install hand root-level toggles (FTP and telnet serving the whole
+# filesystem, ADB, reboot) to anyone on the network until the owner noticed.
 #
 # TTL-fix pins a fixed egress TTL (see below). LAN-only bindings throughout.
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
@@ -18,13 +24,15 @@ A=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*action=\([a-zA-Z_]*\).*/\1/p')
 PWFILE=/etc/signalmod.pw
 case "$A" in
   *_on|*_off|reboot|setpw)
-    if [ -s "$PWFILE" ]; then
-      supplied="$HTTP_X_AUTH"
-      [ -z "$supplied" ] && supplied=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*[?&]auth=\([^&]*\).*/\1/p')
-      if [ "$supplied" != "$(cat "$PWFILE" 2>/dev/null)" ]; then
-        printf 'Status: 403 Forbidden\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n{"error":"auth"}'
-        exit 0
-      fi
+    if [ ! -s "$PWFILE" ]; then
+      printf 'Status: 503 Service Unavailable\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n{"error":"no control password set: create /etc/signalmod.pw (chmod 600) over ADB or SSH first"}'
+      exit 0
+    fi
+    supplied="$HTTP_X_AUTH"
+    [ -z "$supplied" ] && supplied=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*[?&]auth=\([^&]*\).*/\1/p')
+    if [ "$supplied" != "$(cat "$PWFILE" 2>/dev/null)" ]; then
+      printf 'Status: 403 Forbidden\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n{"error":"auth"}'
+      exit 0
     fi
     ;;
 esac

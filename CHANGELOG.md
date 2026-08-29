@@ -2,6 +2,24 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.3.0] — 2026-08-29  ·  **safe by default**
+
+### Security
+- **`control.sh` now fails closed.** State-changing actions (`*_on`, `*_off`,
+  `reboot`, `setpw`) previously fell back to *unauthenticated* when
+  `/etc/signalmod.pw` was absent, for backwards compatibility. That meant a fresh
+  install handed root-level toggles — FTP and telnet serving the whole
+  filesystem, ADB, reboot — to anyone on the network until the owner noticed and
+  set a password. With no password file, every mutation is now refused with 503.
+- **No unauthenticated bootstrap.** `setpw` is refused too when no password
+  exists, so nobody on the LAN can claim an unclaimed device by setting the
+  password first. Create the first password over ADB or SSH, which you
+  necessarily have if you installed this at all:
+  `printf '%s' 'yourpassword' > /etc/signalmod.pw && chmod 600 /etc/signalmod.pw`
+- Status reads stay open, so the panel still polls without prompting.
+
+This is the change that made the repository safe to publish.
+
 ## [2.2.0] — 2026-08-29  ·  **security + reliability release**
 
 Everything here was verified against a real M7350 v3.20, not just built.

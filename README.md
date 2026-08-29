@@ -1,10 +1,15 @@
 # TP-Link M7350 — LTE signal stats + dark UI mod
 
-> **Use [v2.2.0](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
-> later.** v2.0.0 shipped the optional root tools (FTP/Telnet/web console) with
-> **no authentication**; v2.1.0 put a password gate on them; v2.2.0 stops serving
-> IMEI/IMSI/SIM number unauthenticated, adds password-gated SSH key management,
-> and fixes an AT-channel fault that left the LTE signal readings blank.
+> **Use [v2.3.0](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
+> later.** Earlier versions were progressively less safe by default: v2.0.0
+> shipped the optional root tools (FTP/Telnet/web console) with **no
+> authentication**; v2.1.0 added a password gate but still fell back to
+> unauthenticated when no password was set; v2.2.0 stopped serving IMEI/IMSI/SIM
+> unauthenticated; **v2.3.0 fails closed**, refusing every state-changing action
+> until you create `/etc/signalmod.pw`.
+>
+> **Set a control password as part of installing:**
+> `printf '%s' 'yourpassword' > /etc/signalmod.pw && chmod 600 /etc/signalmod.pw`
 
 Add **live LTE signal metrics** (RSRP, RSRQ, RSSI, EARFCN, Band) and a **modern
 dark theme** to the web UI of a TP-Link M7350 v3 portable 4G router — no firmware

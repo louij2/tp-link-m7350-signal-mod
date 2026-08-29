@@ -2,7 +2,35 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
-## [Unreleased]
+## [2.2.0] — 2026-08-29  ·  **security + reliability release**
+
+Everything here was verified against a real M7350 v3.20, not just built.
+
+### Fixed
+- **LTE signal readings had stopped working entirely.** RSRP, RSRQ, EARFCN and
+  band were all empty. A modem AT channel can answer `AT` and `$QCSYSMODE`
+  perfectly while rejecting `$QCRSRP?` — `/dev/smd7` on this device does exactly
+  that, where smd8 and smd11 answer it. The daemon's health check asked only
+  whether the channel responded *at all*, which it did, so it never re-selected
+  and sat indefinitely on a channel that could not produce the one number the
+  mod exists to show. It now judges the channel on the value it needs, skips the
+  bad one, and falls back to trying every channel so a recovered one is not
+  locked out for the life of the daemon.
+- **A dead daemon looked alive.** `grep <name> /proc/*/cmdline` matches any shell
+  whose own command line mentions the name, including the shell running the
+  check. Self and parent PIDs are now excluded and the match is on the full path.
+- **`deploy.sh` over SSH copied nothing and reported success.** dropbear ships no
+  `sftp-server`, and scp has defaulted to the SFTP protocol since OpenSSH 9.0, so
+  every copy failed; the exit status was never checked, and the cache-buster was
+  rewritten regardless, leaving the page looking freshly deployed while running
+  the old code. Now falls back through `scp -O` to a plain `cat >` stream, and
+  compares sha256 for every file.
+- Signal-strength bars rendered as invisible spacing: a broad
+  `i{background-color:transparent!important}` reset beat the narrower
+  non-important `.sigmod-bars i` rule.
+- `metrics.sh` reported a flat 0.0 temperature and no battery: this SoC reports
+  `thermal_zone0` in whole degrees rather than millidegrees, and the battery uci
+  keys are `power_level`/`is_charging`.
 
 ### Security
 - **Subscriber identifiers are no longer served unauthenticated.** `deviceinfo.sh`
@@ -12,6 +40,14 @@ All notable changes to the M7350 Extreme mod are documented here.
   redacted otherwise, including when no password is configured (fail closed).
   Everything else in the About card stays open, and the withheld fields render as
   a click-to-unlock `locked` in the UI.
+- **SSH key management fails closed.** The new `keys.sh` refuses every action
+  unless a control password is set and presented, because installing a key grants
+  permanent root SSH. Keys are validated strictly: `authorized_keys` options
+  (`command=`, `from=`, `permitopen=`) are rejected outright, since they turn a
+  key line into arbitrary root execution, and the last remaining key cannot be
+  revoked so you cannot lock yourself out.
+- Passwords and public keys are sent in the request body, never the query
+  string, where the web server would log them.
 
 ### Changed
 - **Status tab is a dashboard grid.** Stock sections and the mod's own cards pack
@@ -35,6 +71,19 @@ All notable changes to the M7350 Extreme mod are documented here.
   (`AT+COPS`). A manual COPS selection reads as "No service" at full signal.
 - **`scripts/verify-lte-reconnect.sh`** — read-only probe of the modem's ubus
   methods and link state, to check the watchdog before arming it.
+- **Security card** in the web UI: list, add and revoke SSH keys, and change the
+  control password.
+- **Host metrics**: temperature, memory, load, battery and per-service listeners,
+  so an alert can fire when telnet or FTP is left enabled. `rx`/`tx` corrected
+  from gauge to counter.
+- **Login banner** at `/etc/profile.d/sigmod-banner.sh` showing live LTE, network,
+  health and uptime. Guarded to interactive TTYs: a banner leaking into
+  non-interactive output would corrupt `deploy.sh`'s digest verification.
+- **`deploy.sh` deploys over SSH** when the device is not on USB, choosing the
+  transport automatically. `M7350_SSH_TARGET` accepts a `~/.ssh/config` alias.
+- The `post-merge` hook now calls `deploy.sh` and lets it pick a transport,
+  instead of testing for ADB itself and skipping every merge once the device
+  moved behind the GL.iNet.
 
 ### Fixed
 - **Signal bars were invisible.** The generic `i{background-color:transparent

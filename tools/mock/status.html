@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<!-- NOTE: the real firmware page may or may not carry a viewport meta.
+     Kept here so the harness can exercise true phone widths. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M7350 mock — Status</title>
+<link rel="stylesheet" href="stock.css">
+<script src="sigmod.js"></script>
+</head><body>
+
+<div id="header"><span class="icon-logo">TP-LINK</span><span id="deviceName">M7350</span></div>
+<div id="top_menu"></div>
+<ul class="tabs">
+  <li id="tabStatus" class="active">Status</li>
+  <li id="tabWizard">Wizard</li>
+  <li id="tabSms">SMS</li>
+  <li id="tabAdvanced">Advanced</li>
+</ul>
+
+<div id="content">
+ <div class="container">
+  <div class="statusPage">
+   <div>
+
+    <div class="connectionSection">
+      <div class="statusHeader">Internet Connection</div>
+      <div class="content-group"><label class="content-label">Network Type</label><label id="networkType">4G</label></div>
+      <div class="content-group"><label class="content-label">Connection Status</label><label id="connectionStatus">Connected</label></div>
+      <div class="content-group"><label class="content-label">ISP</label><label id="ispName">Three UK</label></div>
+      <div class="content-group"><label class="content-label">IP Address</label><label id="wanIp">10.114.22.87</label></div>
+      <div class="content-group"><label class="content-label">Connected Time</label><label id="connTime">2 days 03:10:30</label></div>
+    </div>
+
+    <div class="wifiSection">
+      <div class="statusHeader">Wireless</div>
+      <div class="content-group"><label class="content-label">SSID</label><label id="ssid">.Mini</label></div>
+      <div class="content-group"><label class="content-label">Security</label><label id="wsec">WPA2-PSK</label></div>
+      <div class="content-group"><label class="content-label">Clients</label><label id="clients">2</label></div>
+      <div class="content-group"><label class="content-label">Channel</label><label id="chan">Auto (6)</label></div>
+    </div>
+
+    <div class="statisticSection">
+      <div class="statusHeader">Data Usage</div>
+      <div class="content-group"><label class="content-label">Used This Month</label><label id="used">10.42 GB</label></div>
+      <div class="content-group"><label class="content-label">Total Downloaded</label><label id="dl">9.11 GB</label></div>
+      <div class="content-group"><label class="content-label">Total Uploaded</label><label id="ul">1.31 GB</label></div>
+    </div>
+
+    <div class="pinSection">
+      <div class="statusHeader">SIM</div>
+      <div class="content-group"><label class="content-label">PIN Status</label><label id="pin">Disabled</label></div>
+      <button class="btn">Manage</button>
+    </div>
+
+   </div>
+  </div>
+ </div>
+</div>
+
+</body></html>

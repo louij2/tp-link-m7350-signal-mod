@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<!-- NOTE: the real firmware page may or may not carry a viewport meta.
+     Kept here so the harness can exercise true phone widths. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M7350 mock — Login</title>
+<link rel="stylesheet" href="stock.css">
+<script src="sigmod.js"></script>
+</head><body>
+<div id="header"><span class="icon-logo">TP-LINK</span><span id="deviceName">M7350</span></div>
+<div id="content">
+ <div id="loginContainer" style="max-width:420px;margin:40px auto;">
+  <div id="loginStatus" class="section-status" style="height:150px;overflow:hidden;padding:14px;background:#fff;border:1px solid #ddd;">
+    <div class="content-group"><label class="content-label">Network Type</label><label id="networkType">4G</label></div>
+    <div class="content-group"><label class="content-label">Signal</label><label id="sigBars">Good</label></div>
+    <div class="content-group"><label class="content-label">Battery</label><label id="batt">87%</label></div>
+  </div>
+  <div id="login" style="margin-top:14px;">
+    <input class="loginInput" type="password" placeholder="Password" style="width:100%;padding:8px;box-sizing:border-box;">
+    <button class="btn btn-info" style="margin-top:10px;width:100%;padding:9px;">Log In</button>
+  </div>
+ </div>
+</div>
+</body></html>

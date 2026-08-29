@@ -1,0 +1,1 @@
+{"model":"M7350+","firmware":"Extreme 2.1.0","hardware":"MDM9625(v3) v1.0","imei":"860000000000001","imsi":"234200000000001","sim":"+447000000000","mac":"AA:BB:CC:DD:EE:FF","operator":"Three UK","mccmnc":"23420","apn":"three.co.uk","netmode":"LTE (4G)","locked":"0"}

@@ -18,6 +18,7 @@ sig_pids() {
   for d in /proc/[0-9]*; do
     p=${d##*/}
     [ "$p" = "$me" ] && continue
+    [ "$p" = "$PPID" ] && continue
     grep -qs "$DAEMON" "$d/cmdline" 2>/dev/null && echo "$p"
   done
 }
@@ -51,13 +52,13 @@ case "$1" in
     fi
     # OLED brand rotator (alternates the OLED operator line model <-> ISP).
     if [ -x /usr/bin/oled_brand.sh ]; then
-      for d in /proc/[0-9]*; do grep -qs oled_brand "$d/cmdline" 2>/dev/null && oledrun=1; done
+      for d in /proc/[0-9]*; do q=${d##*/}; [ "$q" = "$$" ] || [ "$q" = "$PPID" ] && continue; grep -qs /usr/bin/oled_brand "$d/cmdline" 2>/dev/null && oledrun=1; done
       [ -z "$oledrun" ] && nohup setsid /usr/bin/oled_brand.sh </dev/null >/dev/null 2>&1 &
     fi
     # LTE auto-reconnect watchdog (opt-in: `touch /etc/signalmod_lte`). Keeps the
     # data link up unattended -- for running behind a GL.iNet as a USB uplink.
     if [ -f /etc/signalmod_lte ] && [ -x /usr/bin/lte_reconnect.sh ]; then
-      for d in /proc/[0-9]*; do grep -qs lte_reconnect "$d/cmdline" 2>/dev/null && lterun=1; done
+      for d in /proc/[0-9]*; do q=${d##*/}; [ "$q" = "$$" ] || [ "$q" = "$PPID" ] && continue; grep -qs /usr/bin/lte_reconnect "$d/cmdline" 2>/dev/null && lterun=1; done
       [ -z "$lterun" ] && nohup setsid /usr/bin/lte_reconnect.sh </dev/null >/dev/null 2>&1 &
     fi
     echo "done"

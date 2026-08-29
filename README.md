@@ -48,6 +48,27 @@ is destructively rewritten.
 
 ---
 
+## Screenshots
+
+**Status tab** — the stock sections and the mod's own cards pack into one
+dashboard grid, so the whole device state fits on a screen without scrolling:
+
+![Status dashboard](docs/status-dashboard.png)
+
+**Narrow screens** — the same grid collapses to a single column:
+
+<img src="docs/status-mobile.png" alt="Status tab on a phone-width screen" width="360">
+
+**Login page** — signal is visible before you authenticate:
+
+![Login page](docs/login.png)
+
+> These are rendered by `tools/mock/serve.sh`, which runs the real `sigmod.js`
+> against a mock of the stock page with **synthetic** data — which is why no real
+> IMEI, IMSI, MAC or phone number appears in them.
+
+---
+
 ## ⚠️ Safety & scope
 
 - **You need root ADB access already.** See *Gaining access* below — the initial
@@ -296,10 +317,35 @@ All the UI text lives in **`device/WEBSERVER/www/sigmod.js`**. Common edits:
 - **Button text**: `'TTL-fix'`, `'ADB'`, `'FTP'`, `'Telnet'`, `'Reboot'`.
 - **Theme colours**: the `--dk-*` variables at the top of `DARK_CSS`.
 
-Then push it to the device:
+### Preview it without the device
+
+The router is only on USB some of the time, so layout work does not need it at
+all:
+
+```bash
+tools/mock/serve.sh        # http://127.0.0.1:8777/status.html
+```
+
+This serves the **real** `sigmod.js` against a mock of the stock page structure
+with synthetic JSON in place of the CGIs, so theme and layout changes can be
+checked in a normal browser. It says nothing about the CGIs or the modem — see
+`tools/mock/README.md` for what it can and cannot prove.
+
+### Then push it to the device
 
 ```bash
 scripts/deploy.sh          # pushes JS+CGIs and auto-bumps the ?v= cache-buster
+```
+
+`deploy.sh` picks its transport automatically: **ADB** when the router is plugged
+in over USB, otherwise **SSH** (the dropbear from `scripts/build-ssh.sh`). ADB is
+preferred when available because it does not ride the LTE link and so cannot cut
+itself off mid-deploy.
+
+```bash
+M7350_TRANSPORT=ssh scripts/deploy.sh      # force SSH
+M7350_HOST=192.168.2.1 scripts/deploy.sh   # non-default LAN IP
+M7350_SSH_TARGET=m7350 scripts/deploy.sh   # a ~/.ssh/config alias, user and key included
 ```
 
 **Auto-deploy on merge:** run `scripts/install-hooks.sh` once. After that, editing +

@@ -30,6 +30,7 @@
   var CGI_SYS    = '/cgi-bin/sysinfo.sh';
   var CGI_CTL    = '/cgi-bin/control.sh';
   var CGI_DEV    = '/cgi-bin/deviceinfo.sh';
+  var CGI_KEYS   = '/cgi-bin/keys.sh';
 
   // Custom device name (AirPort-style). Change this to rebrand the UI.
   var MODEL = 'M7350+ Extreme';
@@ -48,12 +49,38 @@
        whitespace so the stock content matches the mod cards. --- */
     '.statusPage{padding:0!important;margin:0!important;}',
     '.statusHeader{font-size:12px!important;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;font-weight:600;margin:0 0 10px!important;padding:0 0 8px!important;border-bottom:1px solid #2a313b!important;}',
-    '.statusPage .content-group{margin:0 0 6px!important;padding:0!important;min-height:0!important;line-height:1.4!important;}',
-    '.statusPage .content-group:last-child{margin-bottom:0!important;}',
-    '.statusPage .content-label{color:#9aa4b2!important;min-width:150px;display:inline-block;}',
+    /* Stock rows: label stacked above value, same visual language as the mod's
+     * own .sigmod-stat tiles, so the two halves of the page read as one UI. */
+    '.statusPage .content-group{margin:0!important;padding:0!important;min-height:0!important;line-height:1.35!important;}',
+    '.statusPage .content-label{display:block!important;min-width:0!important;color:#9aa4b2!important;font-size:11px!important;font-weight:400!important;}',
+    '.statusPage .content-group>label+label,.statusPage .content-group>label:last-child:not(.content-label),.statusPage .content-group>span:last-child,.statusPage .content-group>div:last-child:not(.content-label){display:block!important;font-size:14px!important;color:#e6edf3!important;margin-top:2px!important;overflow-wrap:break-word!important;}',
     /* the wrapper divs stay transparent; the real sections become the cards */
     '.statusPage>div{background:transparent!important;border:0!important;padding:0!important;margin:0!important;}',
-    '.connectionSection,.wifiSection,.statisticSection,.pinSection,.simSection,.dataSection{background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;margin:0 0 12px!important;box-shadow:none!important;min-height:0!important;}',
+    /* Each stock section becomes a dense auto-fill grid. NOTHING is hidden,
+     * moved or duplicated -- every stock row stays exactly where the firmware
+     * put it and merely reflows into columns, so no value can go missing and
+     * the page still works if TP-LINK changes the DOM. */
+    '.connectionSection,.wifiSection,.statisticSection,.pinSection,.simSection,.dataSection{background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;margin:0 0 12px!important;box-shadow:none!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(142px,1fr))!important;gap:11px 14px!important;align-content:start!important;}',
+    /* ---- Dashboard grid (Grafana-style) --------------------------------
+     * .statusPage and its plain wrapper divs are dissolved with
+     * display:contents so the real stock sections AND the mod's own cards all
+     * become direct items of ONE grid. Nothing is moved in the DOM -- purely
+     * a layout change -- so every stock row keeps its element, its id and its
+     * firmware updates. Wrappers whose class contains "ection" are excluded so
+     * the sections themselves always survive as cards, no matter how deeply
+     * the firmware nests them. */
+    /* Masonry packing via CSS multi-column: cards flow into the next slot the
+     * moment the previous one ends, so there are no aligned row edges and no
+     * dead space under the short cards -- the whole width stays busy and the
+     * page stops scrolling. break-inside keeps a card from being split. */
+    '.sigmod-dash{display:block!important;column-width:300px!important;column-gap:12px!important;max-width:none!important;width:auto!important;}',
+    '.sigmod-dash>.sigmod-card,.sigmod-dash .connectionSection,.sigmod-dash .wifiSection,.sigmod-dash .statisticSection,.sigmod-dash .pinSection,.sigmod-dash .simSection,.sigmod-dash .dataSection{break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
+    '.sigmod-dash .statusPage{display:contents!important;}',
+    '.sigmod-dash .statusPage>div:not([class*="ection"]),.sigmod-dash .statusPage>div:not([class*="ection"])>div:not([class*="ection"]){display:contents!important;}',
+    '.sigmod-dash>.sigmod-card,.sigmod-dash .connectionSection,.sigmod-dash .wifiSection,.sigmod-dash .statisticSection,.sigmod-dash .pinSection,.sigmod-dash .simSection,.sigmod-dash .dataSection{margin:0 0 12px!important;width:auto!important;}',
+    /* headers and any full-width controls span every column */
+    '.statusPage .statusHeader{grid-column:1/-1!important;}',
+    '.statusPage .btn,.statusPage button,.statusPage input[type="button"],.statusPage input[type="submit"]{justify-self:start!important;}',
     /* two-column top row (Connection | Wi-Fi) with a real gap, Stats full width */
     '.statusPage>.hide,.statusPage>div:not(.pinSection){overflow:visible!important;}',
     '.connectionSection,.wifiSection{width:auto!important;}',
@@ -98,10 +125,10 @@
     /* Mod panels ------------------------------------------------------- */
     '.sigmod-card{background:#171b21!important;border:1px solid #2a313b;border-radius:10px;padding:12px 14px;margin:12px 0;}',
     '.sigmod-card h3{margin:0 0 10px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;display:flex;align-items:center;gap:8px;}',
-    '.sigmod-grid{display:flex;flex-wrap:wrap;gap:10px 22px;}',
-    '.sigmod-stat{min-width:120px;}',
+    '.sigmod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:11px 14px;}',
+    '.sigmod-stat{min-width:0;overflow-wrap:anywhere;}',
     '.sigmod-stat .k{display:flex;align-items:center;gap:7px;font-size:11px;color:#9aa4b2!important;}',
-    '.sigmod-stat .v{font-size:16px;color:#e6edf3!important;margin-top:2px;}',
+    '.sigmod-stat .v{font-size:14px;color:#e6edf3!important;margin-top:2px;overflow-wrap:break-word;font-variant-numeric:tabular-nums;}',
     '.sigmod-ctrls{display:flex;flex-wrap:wrap;gap:10px;}',
     '.sigmod-btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2a313b;border-radius:8px;padding:9px 14px;font-size:13px;background:#1d232c!important;color:#e6edf3!important;user-select:none;}',
     '.sigmod-btn:hover{border-color:#3a4552;}',
@@ -109,8 +136,13 @@
     '.sigmod-btn.off{border-color:#2a313b;color:#9aa4b2!important;}',
     '.sigmod-btn.danger:hover{border-color:#f87171;color:#f87171!important;}',
     '.sigmod-pill{font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid currentColor;}',
+    '.sigmod-keys{margin-top:10px;display:flex;flex-direction:column;gap:8px;}',
+    '.sigmod-key{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#1d232c!important;border:1px solid #2a313b;border-radius:8px;padding:8px 10px;}',
+    '.sigmod-key .kt{font-size:13px;color:#e6edf3!important;overflow-wrap:anywhere;}',
+    '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:anywhere;font-family:monospace;}',
+    '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
     '.sigmod-bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;}',
-    '.sigmod-bars i{width:3px;background:#34d399;border-radius:1px;opacity:.25;}'
+    '.sigmod-bars i{width:3px;background:#34d399!important;background-color:#34d399!important;border-radius:1px;opacity:.25;}'
   ].join('');
 
   function ensureDarkTheme() {
@@ -351,15 +383,42 @@
         stat('advanced', 'Network Mode', 'abNet') +
       '</div>';
 
+    var sec = document.createElement('div');
+    sec.className = 'sigmod-card';
+    sec.id = 'sigmodSec';
+    sec.innerHTML =
+      '<h3>' + svg('shield', 15) + 'Security</h3>' +
+      '<div class="sigmod-ctrls">' +
+        '<span class="sigmod-btn" id="btnAddKey">' + svg('lock', 16) + 'Add SSH key</span>' +
+        '<span class="sigmod-btn" id="btnChangePw">' + svg('lock', 16) + 'Change password</span>' +
+      '</div>' +
+      '<div id="sigmodKeys" class="sigmod-keys"></div>' +
+      '<div class="content-label" style="margin-top:8px;font-size:11px;">' +
+        'Keys here grant root SSH. Both actions need the control password, and ' +
+        'the last remaining key cannot be revoked so you cannot lock yourself out.</div>';
+
     host.appendChild(sys);
     host.appendChild(ctl);
+    host.appendChild(sec);
     host.appendChild(about);
     wireControls();
+    var ak = document.getElementById('btnAddKey');   if (ak) ak.onclick = addKey;
+    var cp = document.getElementById('btnChangePw'); if (cp) cp.onclick = changePw;
     refreshCtlState();
     fetchDeviceInfo();
+    loadKeys();
   }
 
-  function fetchDeviceInfo() {
+  // IMEI / IMSI / SIM come back redacted unless we present the control password,
+  // so send it when we have one and offer a one-click unlock when we do not.
+  function unlockAbout() {
+    var p = window.prompt('Control password (to show IMEI / IMSI / SIM):');
+    if (p === null) return;
+    try { sessionStorage.setItem('sigmodPw', p); } catch (e) {}
+    fetchDeviceInfo(p);
+  }
+
+  function fetchDeviceInfo(pw) {
     var x = new XMLHttpRequest();
     x.onload = function () {
       try {
@@ -368,9 +427,26 @@
         set('abModel', d.model); set('abFw', d.firmware); set('abHw', d.hardware);
         set('abImei', d.imei); set('abMac', d.mac); set('abImsi', d.imsi); set('abSim', d.sim);
         set('abOper', d.operator + (d.mccmnc ? ' (' + d.mccmnc + ')' : '')); set('abApn', d.apn); set('abNet', d.netmode);
+
+        var ids = ['abImei', 'abImsi', 'abSim'];
+        for (var i = 0; i < ids.length; i++) {
+          var e = document.getElementById(ids[i]);
+          if (!e) continue;
+          if (d.locked === '1') {
+            e.textContent = 'locked';
+            e.style.cursor = 'pointer';
+            e.style.color = '#9aa4b2';
+            e.title = 'Click to unlock with the control password';
+            e.onclick = unlockAbout;
+          } else {
+            e.style.cursor = ''; e.style.color = ''; e.title = ''; e.onclick = null;
+          }
+        }
       } catch (e) {}
     };
     x.open('GET', CGI_DEV + '?t=' + (new Date()).getTime(), true);
+    var use = (pw != null) ? pw : storedPw();
+    if (use) x.setRequestHeader('X-Auth', use);
     x.send();
   }
 
@@ -378,7 +454,12 @@
     if (!isPostLogin()) return;
     if (!document.getElementById('sigRow')) return;   // wait for status view
     var host = panelHost();
-    if (host) buildPanels(host);
+    if (!host) return;
+    // Dashboard layout is opt-in per element: only the container that actually
+    // holds the Status tab gets it, so Advanced/SMS keep their stock layout.
+    // Re-applied every tick because the framework rebuilds <body> from templates.
+    if (host.className.indexOf('sigmod-dash') < 0) host.className += ' sigmod-dash';
+    buildPanels(host);
   }
 
   function setPill(id, state) {
@@ -407,6 +488,95 @@
     };
     x.open('GET', CGI_SYS + '?t=' + (new Date()).getTime(), true);
     x.send();
+  }
+
+  // Generic authenticated request. Same 403-then-prompt-once flow as ctl(),
+  // but supports POST so passwords and public keys travel in the body rather
+  // than the query string, where they would be logged by the web server.
+  function api(method, url, body, cb, pw) {
+    var x = new XMLHttpRequest();
+    x.onload = function () {
+      if (x.status === 403) {
+        var p = window.prompt('Control password:');
+        if (p === null) { cb && cb(null, 403); return; }
+        try { sessionStorage.setItem('sigmodPw', p); } catch (e) {}
+        api(method, url, body, cb, p);
+        return;
+      }
+      var d = null;
+      try { d = JSON.parse(x.responseText); } catch (e) {}
+      cb && cb(d, x.status);
+    };
+    x.onerror = function () { cb && cb(null, 0); };
+    x.open(method, url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + (new Date()).getTime(), true);
+    var use = (pw != null) ? pw : storedPw();
+    if (use) x.setRequestHeader('X-Auth', use);
+    x.send(body || null);
+  }
+
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function renderKeys(list) {
+    var host = document.getElementById('sigmodKeys');
+    if (!host) return;
+    if (!list || !list.length) { host.innerHTML = '<div class="content-label">No keys installed.</div>'; return; }
+    var h = '';
+    for (var i = 0; i < list.length; i++) {
+      var k = list[i];
+      h += '<div class="sigmod-key">' +
+             '<div><div class="kt">' + esc(k.comment || '(no comment)') + '</div>' +
+             '<div class="kf">' + esc(k.type) + '  ' + esc(k.fp) + '</div></div>' +
+             '<span class="sigmod-btn danger sigmod-revoke" data-i="' + k.i + '">Revoke</span>' +
+           '</div>';
+    }
+    host.innerHTML = h;
+    var btns = host.getElementsByClassName('sigmod-revoke');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].onclick = function () {
+        var n = this.getAttribute('data-i');
+        if (!window.confirm('Revoke this key? Anything using it loses SSH access.')) return;
+        api('GET', CGI_KEYS + '?action=revoke&i=' + n, null, function (d) {
+          if (d && d.error) window.alert(d.error);
+          loadKeys();
+        });
+      };
+    }
+  }
+
+  function loadKeys() {
+    var host = document.getElementById('sigmodKeys');
+    if (!host) return;
+    api('GET', CGI_KEYS + '?action=list', null, function (d, st) {
+      if (st === 403 || st === 503) {
+        host.innerHTML = '<div class="content-label">' +
+          (st === 503 ? 'Set a control password first (/etc/signalmod.pw).' : 'Locked.') + '</div>';
+        return;
+      }
+      renderKeys(d);
+    });
+  }
+
+  function addKey() {
+    var k = window.prompt('Paste an SSH public key (ssh-ed25519 / ssh-rsa ...):');
+    if (!k) return;
+    api('POST', CGI_KEYS + '?action=add', k, function (d) {
+      if (d && d.error) window.alert('Rejected: ' + d.error);
+      loadKeys();
+    });
+  }
+
+  function changePw() {
+    var a = window.prompt('New control password (at least 8 characters):');
+    if (!a) return;
+    var b = window.prompt('Repeat it:');
+    if (a !== b) { window.alert('They did not match. Nothing changed.'); return; }
+    api('POST', CGI_CTL + '?action=setpw', a, function (d) {
+      if (d && d.ok) {
+        try { sessionStorage.setItem('sigmodPw', a); } catch (e) {}
+        window.alert('Control password changed.');
+      } else { window.alert((d && d.error) || 'Change failed.'); }
+    });
   }
 
   function isMutation(a) { return /_on$|_off$/.test(a) || a === 'reboot'; }

@@ -17,7 +17,7 @@ A=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*action=\([a-zA-Z_]*\).*/\1/p')
 # --- Auth gate (before any headers are emitted) ---------------------------
 PWFILE=/etc/signalmod.pw
 case "$A" in
-  *_on|*_off|reboot)
+  *_on|*_off|reboot|setpw)
     if [ -s "$PWFILE" ]; then
       supplied="$HTTP_X_AUTH"
       [ -z "$supplied" ] && supplied=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*[?&]auth=\([^&]*\).*/\1/p')
@@ -104,5 +104,26 @@ case "$A" in
   wifi_on)  wifi_on;  sleep 1; printf '{"ok":true,"wifi":"%s"}' "$(wifi_state)" ;;
   wifi_off) wifi_off; printf '{"ok":true,"wifi":"off"}' ;;
   wifi_status) printf '{"wifi":"%s"}' "$(wifi_state)" ;;
+
+  # Change the mod control password. The new value is read from the POST BODY,
+  # never the query string, so it does not end up in the web server's log or in
+  # browser history. The auth gate above already required the CURRENT password,
+  # except on a device that has none yet, where this is the bootstrap path.
+  setpw)
+    len="${CONTENT_LENGTH:-0}"
+    case "$len" in ''|*[!0-9]*) len=0 ;; esac
+    if [ "$len" -lt 1 ] || [ "$len" -gt 256 ]; then
+      printf '{"error":"no password in request body"}'
+    else
+      NEW=$(dd bs=1 count="$len" 2>/dev/null | tr -d '\r\n')
+      if [ "${#NEW}" -lt 8 ]; then
+        printf '{"error":"too short: use at least 8 characters"}'
+      else
+        cp "$PWFILE" "$PWFILE.bak" 2>/dev/null
+        printf '%s' "$NEW" > "$PWFILE.new" && chmod 600 "$PWFILE.new" && mv "$PWFILE.new" "$PWFILE" \
+          && printf '{"ok":true}' || printf '{"error":"write failed"}'
+      fi
+    fi
+    ;;
   *) printf '{"error":"unknown action"}' ;;
 esac

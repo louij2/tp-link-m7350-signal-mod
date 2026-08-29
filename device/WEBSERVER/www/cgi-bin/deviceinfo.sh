@@ -28,7 +28,7 @@ g() { uci get "$1" 2>/dev/null; }
 
 # ---- Custom branding (edit these to rebrand the About page) --------------
 BRAND_MODEL="M7350+"
-BRAND_FW="Extreme 2.2.0 (base 1.1.3 Build 161226)"
+BRAND_FW="Extreme 2.3.0 (base 1.1.3 Build 161226)"
 # --------------------------------------------------------------------------
 
 MODEL="$BRAND_MODEL"

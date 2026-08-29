@@ -62,9 +62,30 @@ if [ "$TRANSPORT" = ssh ]; then say "Transport: ssh ($TARGET)"; else say "Transp
 # ---- transport-agnostic primitives ----------------------------------------
 push(){ # push <local> <remote>
   case "$TRANSPORT" in
-    adb) "$ADB" push "$1" "$2" >/dev/null ;;
-    ssh) scp $SSH_OPTS -q "$1" "$TARGET:$2" ;;
+    adb) "$ADB" push "$1" "$2" >/dev/null || return 1 ;;
+    ssh)
+      # The device runs dropbear, which ships no sftp-server, so a modern scp
+      # fails outright: OpenSSH 9.0+ uses the SFTP protocol by default. -O asks
+      # for the legacy SCP protocol; if that is unavailable too, stream the file
+      # through a plain shell redirect, which needs nothing on the far side.
+      scp $SSH_OPTS -O -q "$1" "$TARGET:$2" 2>/dev/null && return 0
+      cat "$1" | ssh $SSH_OPTS -T "$TARGET" "cat > '$2'" || return 1
+      ;;
   esac
+}
+
+# Never trust the transport's exit status: the first SSH deploy reported success
+# for six files it had not copied at all. Compare digests instead.
+local_sha(){ shasum -a 256 "$1" 2>/dev/null | cut -d' ' -f1; }
+verify(){ # verify <local> <remote>
+  want=$(local_sha "$1")
+  got=$(run "sha256sum '$2' 2>/dev/null" | tr -d '\r' | cut -d' ' -f1)
+  [ -n "$want" ] && [ -n "$got" ] && [ "$want" = "$got" ]
+}
+send(){ # send <local> <remote> <mode>
+  push "$1" "$2" || die "failed to copy $(basename "$1") to $2"
+  verify "$1" "$2" || die "$(basename "$1") did not land intact at $2 (digest mismatch)"
+  run "chmod $3 $2" >/dev/null 2>&1
 }
 run(){  # run <shell command>
   case "$TRANSPORT" in
@@ -75,13 +96,15 @@ run(){  # run <shell command>
 
 # ---- deploy ---------------------------------------------------------------
 say "Pushing web assets..."
+n=0
 for f in sigmod.js; do
-  push "$DEV/WEBSERVER/www/$f" "$WWW/$f" && run "chmod 644 $WWW/$f"
+  send "$DEV/WEBSERVER/www/$f" "$WWW/$f" 644; n=$((n+1))
 done
 for c in signal_stats.sh sysinfo.sh control.sh deviceinfo.sh metrics.sh; do
   [ -f "$DEV/WEBSERVER/www/cgi-bin/$c" ] || continue
-  push "$DEV/WEBSERVER/www/cgi-bin/$c" "$WWW/cgi-bin/$c" && run "chmod 755 $WWW/cgi-bin/$c"
+  send "$DEV/WEBSERVER/www/cgi-bin/$c" "$WWW/cgi-bin/$c" 755; n=$((n+1))
 done
+say "$n files copied and digest-verified."
 
 # Bump the cache-buster to a value that always changes, so edits show without a
 # hard-refresh. Device uptime + a local random keeps it monotonic-ish and unique.

@@ -53,8 +53,9 @@
      * and floated labels. Every one of those has to be undone explicitly or the
      * container keeps its 630px whether or not anything is in it -- which is
      * what produced a tall empty band above the cards. */
-    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:12px!important;align-items:start!important;}',
-    '.statusPage>.pinSection,.statusPage>.connectionSection,.statusPage>.wifiSection,.statusPage>.statisticSection,.statusPage>.simSection,.statusPage>.dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0!important;}',
+    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:block!important;column-width:300px!important;column-gap:12px!important;}',
+    '.statusPage>.sigmod-card{margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;width:auto!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
+    '.statusPage>.pinSection,.statusPage>.connectionSection,.statusPage>.wifiSection,.statusPage>.statisticSection,.statusPage>.simSection,.statusPage>.dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
     '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;}',
     '.statusPage .content-group>.content-label{float:none!important;width:auto!important;margin-right:0!important;}',
     '.statusPage .content-group>label{white-space:normal!important;}',
@@ -71,14 +72,14 @@
      * moved or duplicated -- every stock row stays exactly where the firmware
      * put it and merely reflows into columns, so no value can go missing and
      * the page still works if TP-LINK changes the DOM. */
-    '.connectionSection:not(.hide),.wifiSection:not(.hide),.statisticSection:not(.hide),.pinSection:not(.hide),.simSection:not(.hide),.dataSection:not(.hide){background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;box-shadow:none!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(142px,1fr))!important;gap:11px 14px!important;align-content:start!important;}',
+    '.connectionSection:not(.hide),.wifiSection:not(.hide),.statisticSection:not(.hide),.pinSection:not(.hide),.simSection:not(.hide),.dataSection:not(.hide){background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;box-shadow:none!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important;gap:10px 12px!important;align-content:start!important;}',
     /* The mod's OWN cards get the dashboard grid. The stock sections are left
      * exactly where the firmware's CSS puts them -- an earlier version dissolved
      * their wrappers with display:contents and re-flowed everything into one
      * masonry column set, which overlapped cards on the real device because the
      * stock stylesheet positions those blocks itself. Only style what we own. */
-    '.sigmod-cards{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:12px!important;align-items:start!important;margin:12px 0!important;}',
-    '.sigmod-cards>.sigmod-card{margin:0!important;}',
+    '.sigmod-cards{display:block!important;column-width:300px!important;column-gap:12px!important;margin:12px 0!important;}',
+    '.sigmod-cards>.sigmod-card{margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;width:auto!important;}',
     /* headers and any full-width controls span every column */
     '.statusPage .statusHeader{grid-column:1/-1!important;}',
     '.statusPage .btn,.statusPage button,.statusPage input[type="button"],.statusPage input[type="submit"]{justify-self:start!important;}',
@@ -127,7 +128,7 @@
     /* Mod panels ------------------------------------------------------- */
     '.sigmod-card{background:#171b21!important;border:1px solid #2a313b;border-radius:10px;padding:12px 14px;margin:12px 0;}',
     '.sigmod-card h3{margin:0 0 10px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;display:flex;align-items:center;gap:8px;}',
-    '.sigmod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:11px 14px;}',
+    '.sigmod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px 12px;}',
     '.sigmod-stat{min-width:0;overflow-wrap:anywhere;}',
     '.sigmod-stat .k{display:flex;align-items:center;gap:7px;font-size:11px;color:#9aa4b2!important;}',
     '.sigmod-stat .v{font-size:14px;color:#e6edf3!important;margin-top:2px;overflow-wrap:break-word;font-variant-numeric:tabular-nums;}',
@@ -302,8 +303,12 @@
     return !!(document.getElementById('top_menu') || document.getElementById('tabStatus'));
   }
   function panelHost() {
-    // Prefer the active status content; fall back to the main container.
-    return document.querySelector('#content .container') ||
+    // Prefer .statusPage: putting our cards in the firmware's own container lets
+    // them share one masonry flow with the stock sections, so a short stock card
+    // no longer strands the space beneath it. We only ever APPEND our own
+    // elements -- the firmware's nodes are never moved or restructured.
+    return document.querySelector('.statusPage') ||
+           document.querySelector('#content .container') ||
            document.getElementById('container') ||
            document.getElementById('content');
   }
@@ -402,14 +407,18 @@
 
     // Our cards live in a container we own, so the grid can never interfere with
     // however the firmware chooses to lay out its own sections.
-    var wrap = document.createElement('div');
-    wrap.className = 'sigmod-cards';
-    wrap.id = 'sigmodCards';
-    wrap.appendChild(sys);
-    wrap.appendChild(ctl);
-    wrap.appendChild(sec);
-    wrap.appendChild(about);
-    host.appendChild(wrap);
+    if (host.className.indexOf('statusPage') >= 0) {
+      // Same column flow as the stock sections.
+      host.appendChild(sys); host.appendChild(ctl);
+      host.appendChild(sec); host.appendChild(about);
+    } else {
+      var wrap = document.createElement('div');
+      wrap.className = 'sigmod-cards';
+      wrap.id = 'sigmodCards';
+      wrap.appendChild(sys); wrap.appendChild(ctl);
+      wrap.appendChild(sec); wrap.appendChild(about);
+      host.appendChild(wrap);
+    }
     wireControls();
     var ak = document.getElementById('btnAddKey');   if (ak) ak.onclick = addKey;
     var cp = document.getElementById('btnChangePw'); if (cp) cp.onclick = changePw;

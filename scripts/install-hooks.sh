@@ -2,22 +2,25 @@
 # Install a git post-merge hook so the device auto-updates whenever you merge or
 # pull changes (e.g. after merging a PR on GitHub, then `git pull` on the Mac).
 #
-# NOTE: the M7350 is reachable only over its USB link to THIS Mac, so a GitHub
-# Action can't deploy to it. This hook runs locally after a merge/pull and
-# deploys over ADB. (If you later put the device behind the GL.iNet with a
-# network path, a self-hosted runner could do the same on merge.)
+# The hook simply calls deploy.sh and lets it choose its own transport: ADB when
+# the router is on USB, otherwise SSH. It used to test for ADB itself and skip
+# outright when there was none, which meant every merge silently skipped the
+# deploy once the device moved behind the GL.iNet and became reachable only over
+# the network.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 HOOK="$HERE/.git/hooks/post-merge"
 cat > "$HOOK" <<'EOF'
 #!/usr/bin/env bash
-# Auto-deploy the web-UI mod to the connected M7350 after a merge/pull.
+# Auto-deploy the web-UI mod to the M7350 after a merge/pull.
+# deploy.sh picks the transport itself: ADB over USB, else SSH over the network.
+# Never fail the merge over this -- an unreachable router is not a bad merge.
 root="$(git rev-parse --show-toplevel)"
-if command -v adb >/dev/null 2>&1 && adb get-state >/dev/null 2>&1; then
-  echo "[post-merge] deploying M7350 mod to device..."
-  "$root/scripts/deploy.sh" || echo "[post-merge] deploy failed (non-fatal)"
+echo "[post-merge] deploying M7350 mod..."
+if "$root/scripts/deploy.sh"; then
+  :
 else
-  echo "[post-merge] no ADB device — skipping device deploy."
+  echo "[post-merge] device unreachable or deploy failed (non-fatal); run scripts/deploy.sh when it is back."
 fi
 EOF
 chmod +x "$HOOK"

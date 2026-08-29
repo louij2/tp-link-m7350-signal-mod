@@ -16,3 +16,11 @@ ul.tabs li.active{background:#fff;}
 .content-label{display:inline-block;min-width:150px;color:#666;}
 .connectionSection,.wifiSection,.statisticSection,.pinSection{background:#fff;border:1px solid #ddd;padding:12px;margin-bottom:10px;}
 .btn{padding:6px 14px;border:1px solid #ccc;background:#eee;cursor:pointer;}
+
+/* Stock hiding. Two variants on purpose: firmware .hide rules are not always
+   display:none, and a mod rule that forces display can defeat the clipping
+   kind without touching the other. */
+.hide{display:none;}
+.popup{position:absolute;top:8px;right:8px;max-width:280px;background:#fff;border:1px solid #ccc;padding:8px;}
+.help-popup{position:absolute;}
+.content-group.horizontal{display:block;}

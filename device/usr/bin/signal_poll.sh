@@ -36,6 +36,17 @@ probe_channel() {
 # Pick the first candidate that answers; sets $SMD (empty if none).
 select_channel() {
   for c in $CANDIDATES; do
+    [ -n "$BAD" ] && [ "$c" = "$BAD" ] && continue
+    if probe_channel "$c"; then
+      SMD="$c"
+      chmod 666 "$c" 2>/dev/null
+      return 0
+    fi
+  done
+  # Nothing else answered. Drop the exclusion and try everything, so a channel
+  # that has since recovered is not locked out for the life of the daemon.
+  BAD=""
+  for c in $CANDIDATES; do
     if probe_channel "$c"; then
       SMD="$c"
       chmod 666 "$c" 2>/dev/null
@@ -81,6 +92,7 @@ iface_bytes() {
 }
 
 PING_TARGET=1.1.1.1
+BAD=""
 select_channel
 empty_streak=0
 prev_rx=""; prev_tx=""; prev_t=""
@@ -117,10 +129,15 @@ while true; do
     RSSI=''
   fi
 
-  # If reads keep coming back empty, the channel may have wedged -- re-select.
-  if [ -z "$RSRP" ] && [ -z "$MODE" ]; then
+  # A channel can answer AT and $QCSYSMODE perfectly while still rejecting
+  # $QCRSRP? -- smd7 on this device does exactly that. Keying the health check
+  # on "no response at all" therefore never fired, and the daemon sat happily on
+  # a channel that could not produce the one number the mod exists to show.
+  # Judge the channel on the value we actually need, not on whether it is alive.
+  if [ -z "$RSRP" ]; then
     empty_streak=$((empty_streak + 1))
     if [ "$empty_streak" -ge 3 ]; then
+      BAD="$SMD"          # skip this one on the way back round
       SMD=""
       empty_streak=0
     fi

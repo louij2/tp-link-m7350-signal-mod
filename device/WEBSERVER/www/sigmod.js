@@ -30,6 +30,7 @@
   var CGI_SYS    = '/cgi-bin/sysinfo.sh';
   var CGI_CTL    = '/cgi-bin/control.sh';
   var CGI_DEV    = '/cgi-bin/deviceinfo.sh';
+  var CGI_KEYS   = '/cgi-bin/keys.sh';
 
   // Custom device name (AirPort-style). Change this to rebrand the UI.
   var MODEL = 'M7350+ Extreme';
@@ -135,6 +136,11 @@
     '.sigmod-btn.off{border-color:#2a313b;color:#9aa4b2!important;}',
     '.sigmod-btn.danger:hover{border-color:#f87171;color:#f87171!important;}',
     '.sigmod-pill{font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid currentColor;}',
+    '.sigmod-keys{margin-top:10px;display:flex;flex-direction:column;gap:8px;}',
+    '.sigmod-key{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#1d232c!important;border:1px solid #2a313b;border-radius:8px;padding:8px 10px;}',
+    '.sigmod-key .kt{font-size:13px;color:#e6edf3!important;overflow-wrap:anywhere;}',
+    '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:anywhere;font-family:monospace;}',
+    '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
     '.sigmod-bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;}',
     '.sigmod-bars i{width:3px;background:#34d399!important;background-color:#34d399!important;border-radius:1px;opacity:.25;}'
   ].join('');
@@ -377,12 +383,30 @@
         stat('advanced', 'Network Mode', 'abNet') +
       '</div>';
 
+    var sec = document.createElement('div');
+    sec.className = 'sigmod-card';
+    sec.id = 'sigmodSec';
+    sec.innerHTML =
+      '<h3>' + svg('shield', 15) + 'Security</h3>' +
+      '<div class="sigmod-ctrls">' +
+        '<span class="sigmod-btn" id="btnAddKey">' + svg('lock', 16) + 'Add SSH key</span>' +
+        '<span class="sigmod-btn" id="btnChangePw">' + svg('lock', 16) + 'Change password</span>' +
+      '</div>' +
+      '<div id="sigmodKeys" class="sigmod-keys"></div>' +
+      '<div class="content-label" style="margin-top:8px;font-size:11px;">' +
+        'Keys here grant root SSH. Both actions need the control password, and ' +
+        'the last remaining key cannot be revoked so you cannot lock yourself out.</div>';
+
     host.appendChild(sys);
     host.appendChild(ctl);
+    host.appendChild(sec);
     host.appendChild(about);
     wireControls();
+    var ak = document.getElementById('btnAddKey');   if (ak) ak.onclick = addKey;
+    var cp = document.getElementById('btnChangePw'); if (cp) cp.onclick = changePw;
     refreshCtlState();
     fetchDeviceInfo();
+    loadKeys();
   }
 
   // IMEI / IMSI / SIM come back redacted unless we present the control password,
@@ -464,6 +488,95 @@
     };
     x.open('GET', CGI_SYS + '?t=' + (new Date()).getTime(), true);
     x.send();
+  }
+
+  // Generic authenticated request. Same 403-then-prompt-once flow as ctl(),
+  // but supports POST so passwords and public keys travel in the body rather
+  // than the query string, where they would be logged by the web server.
+  function api(method, url, body, cb, pw) {
+    var x = new XMLHttpRequest();
+    x.onload = function () {
+      if (x.status === 403) {
+        var p = window.prompt('Control password:');
+        if (p === null) { cb && cb(null, 403); return; }
+        try { sessionStorage.setItem('sigmodPw', p); } catch (e) {}
+        api(method, url, body, cb, p);
+        return;
+      }
+      var d = null;
+      try { d = JSON.parse(x.responseText); } catch (e) {}
+      cb && cb(d, x.status);
+    };
+    x.onerror = function () { cb && cb(null, 0); };
+    x.open(method, url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + (new Date()).getTime(), true);
+    var use = (pw != null) ? pw : storedPw();
+    if (use) x.setRequestHeader('X-Auth', use);
+    x.send(body || null);
+  }
+
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function renderKeys(list) {
+    var host = document.getElementById('sigmodKeys');
+    if (!host) return;
+    if (!list || !list.length) { host.innerHTML = '<div class="content-label">No keys installed.</div>'; return; }
+    var h = '';
+    for (var i = 0; i < list.length; i++) {
+      var k = list[i];
+      h += '<div class="sigmod-key">' +
+             '<div><div class="kt">' + esc(k.comment || '(no comment)') + '</div>' +
+             '<div class="kf">' + esc(k.type) + '  ' + esc(k.fp) + '</div></div>' +
+             '<span class="sigmod-btn danger sigmod-revoke" data-i="' + k.i + '">Revoke</span>' +
+           '</div>';
+    }
+    host.innerHTML = h;
+    var btns = host.getElementsByClassName('sigmod-revoke');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].onclick = function () {
+        var n = this.getAttribute('data-i');
+        if (!window.confirm('Revoke this key? Anything using it loses SSH access.')) return;
+        api('GET', CGI_KEYS + '?action=revoke&i=' + n, null, function (d) {
+          if (d && d.error) window.alert(d.error);
+          loadKeys();
+        });
+      };
+    }
+  }
+
+  function loadKeys() {
+    var host = document.getElementById('sigmodKeys');
+    if (!host) return;
+    api('GET', CGI_KEYS + '?action=list', null, function (d, st) {
+      if (st === 403 || st === 503) {
+        host.innerHTML = '<div class="content-label">' +
+          (st === 503 ? 'Set a control password first (/etc/signalmod.pw).' : 'Locked.') + '</div>';
+        return;
+      }
+      renderKeys(d);
+    });
+  }
+
+  function addKey() {
+    var k = window.prompt('Paste an SSH public key (ssh-ed25519 / ssh-rsa ...):');
+    if (!k) return;
+    api('POST', CGI_KEYS + '?action=add', k, function (d) {
+      if (d && d.error) window.alert('Rejected: ' + d.error);
+      loadKeys();
+    });
+  }
+
+  function changePw() {
+    var a = window.prompt('New control password (at least 8 characters):');
+    if (!a) return;
+    var b = window.prompt('Repeat it:');
+    if (a !== b) { window.alert('They did not match. Nothing changed.'); return; }
+    api('POST', CGI_CTL + '?action=setpw', a, function (d) {
+      if (d && d.ok) {
+        try { sessionStorage.setItem('sigmodPw', a); } catch (e) {}
+        window.alert('Control password changed.');
+      } else { window.alert((d && d.error) || 'Change failed.'); }
+    });
   }
 
   function isMutation(a) { return /_on$|_off$/.test(a) || a === 'reboot'; }

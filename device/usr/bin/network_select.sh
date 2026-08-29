@@ -27,7 +27,12 @@ SET_AUTO=0
 DAEMON_WAS_RUNNING=0
 stop_daemon() {
   for d in /proc/[0-9]*; do
-    grep -qs signal_poll "$d/cmdline" 2>/dev/null || continue
+    q=${d##*/}
+    # Never match our own shell or our parent: a command line that merely
+    # mentions the daemon name reads as a running daemon otherwise, which is
+    # exactly how a dead daemon looked alive for 23 hours.
+    [ "$q" = "$$" ] || [ "$q" = "$PPID" ] && continue
+    grep -qs /usr/bin/signal_poll "$d/cmdline" 2>/dev/null || continue
     DAEMON_WAS_RUNNING=1
     kill "${d#/proc/}" 2>/dev/null
   done

@@ -34,6 +34,13 @@ say "Deploying signal daemon + init script..."
 for d in oled_brand.sh lte_reconnect.sh network_select.sh; do
   [ -f "$DEV/usr/bin/$d" ] && { "$ADB" push "$DEV/usr/bin/$d" "/usr/bin/$d"; "$ADB" shell "chmod 755 /usr/bin/$d"; }
 done
+# Login banner: /etc/profile already sources /etc/profile.d/*.sh, so this is a
+# drop-in and removing the file removes the feature.
+if [ -f "$DEV/etc/profile.d/sigmod-banner.sh" ]; then
+  "$ADB" shell "mkdir -p /etc/profile.d"
+  "$ADB" push "$DEV/etc/profile.d/sigmod-banner.sh" /etc/profile.d/sigmod-banner.sh
+  "$ADB" shell "chmod 644 /etc/profile.d/sigmod-banner.sh"
+fi
 "$ADB" push "$DEV/etc/init.d/signal_poll"          /etc/init.d/signal_poll
 "$ADB" shell "chmod 755 /etc/init.d/signal_poll"
 "$ADB" shell "ln -sf ../init.d/signal_poll /etc/rc5.d/S98signal_poll"

@@ -24,3 +24,20 @@ ul.tabs li.active{background:#fff;}
 .popup{position:absolute;top:8px;right:8px;max-width:280px;background:#fff;border:1px solid #ccc;padding:8px;}
 .help-popup{position:absolute;}
 .content-group.horizontal{display:block;}
+
+/* ---------------------------------------------------------------------------
+ * The firmware's ACTUAL status-page geometry, transcribed from settings.css on
+ * a real M7350 v3.20. These are the rules the mod has to fight: a fixed-size
+ * container, floated half-width sections with fixed heights, and fixed-height
+ * rows with floated labels. The mock previously had none of this, so it happily
+ * passed a layout that fell apart on the device. Do not "tidy" these away.
+ * ------------------------------------------------------------------------- */
+.statusPage{width:850px;background-color:#fff;min-height:630px;height:500px;margin-top:15px;padding:15px 55px;}
+.statusPage .pinSection,.statusPage .connectionSection,.statusPage .wifiSection,.statusPage .statisticSection{width:49.5%;float:left;background-color:#f7f7f7;height:310px;}
+.statusPage .wifiSection{float:right;}
+.statusPage .statisticSection{width:100%;margin-top:5px;height:180px;}
+.statusPage .content-group{padding-top:10px;margin-bottom:0;margin-left:85px;height:25px;}
+.statusPage .content-group>.content-label{display:inline-block;font-weight:700;margin-right:6px;text-align:left;float:left;vertical-align:middle;width:43%;}
+.statusPage .content-group>label{vertical-align:middle;white-space:nowrap;}
+.statusPage .pinSection>.statusHeader,.statusPage .connectionSection>.statusHeader,.statusPage .wifiSection>.statusHeader,.statusPage .statisticSection>.statusHeader{padding:25px 0 5px 40px;line-height:30px;font-size:16px;font-weight:700;}
+.statisticSection .horizontal{width:50%;float:left;}

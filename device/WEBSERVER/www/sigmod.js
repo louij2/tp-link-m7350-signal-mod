@@ -47,7 +47,18 @@
     '.statusPage>div,.statusPage .container,#content .container>div{background:#171b21!important;border-color:#2a313b!important;}',
     /* --- Status-page redesign: card-ify the actual stock sections, cut
        whitespace so the stock content matches the mod cards. --- */
-    '.statusPage{padding:0!important;margin:0!important;}',
+    /* Neutralise the firmware's fixed geometry BEFORE laying anything out.
+     * settings.css pins .statusPage to width:850px/height:500px/min-height:630px
+     * and floats the sections at 49.5% with height:310px, with fixed-height rows
+     * and floated labels. Every one of those has to be undone explicitly or the
+     * container keeps its 630px whether or not anything is in it -- which is
+     * what produced a tall empty band above the cards. */
+    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:12px!important;align-items:start!important;}',
+    '.statusPage>.pinSection,.statusPage>.connectionSection,.statusPage>.wifiSection,.statusPage>.statisticSection,.statusPage>.simSection,.statusPage>.dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0!important;}',
+    '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;}',
+    '.statusPage .content-group>.content-label{float:none!important;width:auto!important;margin-right:0!important;}',
+    '.statusPage .content-group>label{white-space:normal!important;}',
+    '.statusPage .statusHeader{padding:0 0 8px!important;margin:0 0 10px!important;line-height:1.3!important;}',
     '.statusHeader{font-size:12px!important;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;font-weight:600;margin:0 0 10px!important;padding:0 0 8px!important;border-bottom:1px solid #2a313b!important;}',
     /* Stock rows: label stacked above value, same visual language as the mod's
      * own .sigmod-stat tiles, so the two halves of the page read as one UI. */
@@ -60,7 +71,7 @@
      * moved or duplicated -- every stock row stays exactly where the firmware
      * put it and merely reflows into columns, so no value can go missing and
      * the page still works if TP-LINK changes the DOM. */
-    '.connectionSection:not(.hide),.wifiSection:not(.hide),.statisticSection:not(.hide),.pinSection:not(.hide),.simSection:not(.hide),.dataSection:not(.hide){background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;margin:0 0 12px!important;box-shadow:none!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(142px,1fr))!important;gap:11px 14px!important;align-content:start!important;}',
+    '.connectionSection:not(.hide),.wifiSection:not(.hide),.statisticSection:not(.hide),.pinSection:not(.hide),.simSection:not(.hide),.dataSection:not(.hide){background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;box-shadow:none!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(142px,1fr))!important;gap:11px 14px!important;align-content:start!important;}',
     /* The mod's OWN cards get the dashboard grid. The stock sections are left
      * exactly where the firmware's CSS puts them -- an earlier version dissolved
      * their wrappers with display:contents and re-flowed everything into one

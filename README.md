@@ -69,9 +69,19 @@ dashboard grid, so the whole device state fits on a screen without scrolling:
 
 ![Login page](docs/login.png)
 
-> These are rendered by `tools/mock/serve.sh`, which runs the real `sigmod.js`
-> against a mock of the stock page with **synthetic** data — which is why no real
-> IMEI, IMSI, MAC or phone number appears in them.
+> The three above are rendered by `tools/mock/serve.sh`, which runs the real
+> `sigmod.js` against a mock of the stock page with **synthetic** data — which is
+> why no real IMEI, IMSI, MAC or phone number appears in them.
+
+**On real hardware** — the login page of an actual M7350 v3.20 on Three/SMARTY,
+showing live values from the modem rather than fixtures:
+
+![Login page on a real M7350](docs/real-device-login.png)
+
+> Straight off the device, with the SSID painted out. Everything else is real:
+> RSRP -82.00 dBm, RSRQ -9.40 dB, RSSI -51 dBm, **LTE Band 3, EARFCN 1363**, read
+> from the modem's AT channel by `signal_poll.sh`. None of that is shown by the
+> stock firmware, which offers four bars and nothing else.
 
 ---
 

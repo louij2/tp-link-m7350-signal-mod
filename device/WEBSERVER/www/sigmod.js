@@ -53,9 +53,9 @@
      * and floated labels. Every one of those has to be undone explicitly or the
      * container keeps its 630px whether or not anything is in it -- which is
      * what produced a tall empty band above the cards. */
-    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:block!important;column-width:300px!important;column-gap:12px!important;}',
-    '.statusPage>.sigmod-card{margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;width:auto!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
-    '.statusPage>.pinSection,.statusPage>.connectionSection,.statusPage>.wifiSection,.statusPage>.statisticSection,.statusPage>.simSection,.statusPage>.dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
+    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:12px!important;align-items:stretch!important;}',
+    '.statusPage>.sigmod-card{margin:0!important;width:auto!important;height:100%!important;box-sizing:border-box!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
+    '.statusPage>.pinSection,.statusPage>.connectionSection,.statusPage>.wifiSection,.statusPage>.statisticSection,.statusPage>.simSection,.statusPage>.dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0!important;height:100%!important;box-sizing:border-box!important;}',
     '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;}',
     '.statusPage .content-group>.content-label{float:none!important;width:auto!important;margin-right:0!important;}',
     '.statusPage .content-group>label{white-space:normal!important;}',
@@ -78,6 +78,9 @@
      * their wrappers with display:contents and re-flowed everything into one
      * masonry column set, which overlapped cards on the real device because the
      * stock stylesheet positions those blocks itself. Only style what we own. */
+    '.sigmod-col{display:flex!important;flex-direction:column!important;gap:12px!important;height:100%!important;min-width:0!important;}',
+    '.sigmod-col>.sigmod-card{margin:0!important;height:auto!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;box-sizing:border-box!important;}',
+    '.sigmod-col>#sigmodAbout{flex:1 1 auto!important;}',
     '.sigmod-cards{display:block!important;column-width:300px!important;column-gap:12px!important;margin:12px 0!important;}',
     '.sigmod-cards>.sigmod-card{margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;width:auto!important;}',
     /* headers and any full-width controls span every column */
@@ -408,9 +411,13 @@
     // Our cards live in a container we own, so the grid can never interfere with
     // however the firmware chooses to lay out its own sections.
     if (host.className.indexOf('statusPage') >= 0) {
-      // Same column flow as the stock sections.
-      host.appendChild(sys); host.appendChild(ctl);
-      host.appendChild(sec); host.appendChild(about);
+      // Same flow as the stock sections. Security and About Device are stacked
+      // in one cell so the pair fills the column rather than leaving a gap.
+      var col = document.createElement('div');
+      col.className = 'sigmod-col';
+      col.id = 'sigmodSecCol';
+      col.appendChild(sec); col.appendChild(about);
+      host.appendChild(sys); host.appendChild(ctl); host.appendChild(col);
     } else {
       var wrap = document.createElement('div');
       wrap.className = 'sigmod-cards';

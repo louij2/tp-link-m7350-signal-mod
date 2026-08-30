@@ -61,9 +61,9 @@ dashboard grid, so the whole device state fits on a screen without scrolling:
 
 ![Status dashboard](docs/status-dashboard.png)
 
-**Narrow screens** — the same grid collapses to a single column:
+**Narrow window** — the same layout collapses to a single column:
 
-<img src="docs/status-mobile.png" alt="Status tab on a phone-width screen" width="360">
+<img src="docs/status-narrow.png" alt="Status tab in a narrow window" width="380">
 
 **Login page** — signal is visible before you authenticate:
 

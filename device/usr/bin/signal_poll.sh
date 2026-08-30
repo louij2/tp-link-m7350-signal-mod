@@ -91,8 +91,79 @@ iface_bytes() {
   echo "$1 ${9}"
 }
 
+
+# ---------------------------------------------------------------------------
+# Serving-cell info (TAC / Cell ID) and the RSRP history ring.
+#
+# These run on a SLOW cadence (once a minute), not every poll: the modem's AT
+# channels are easy to wedge with heavy probing, and none of this changes fast.
+#
+# Note the channel split on this hardware: +CEREG answers on smd7, while
+# $QCRSRP? answers on smd8/smd11 and ERRORs on smd7. So the cell poll picks its
+# own channel independently of the signal channel rather than assuming one
+# channel does everything.
+# ---------------------------------------------------------------------------
+CELL_CH=""
+CELL_FAILS=0
+HIST=/tmp/signal_hist
+HIST_MAX=240          # 240 samples at 60s = 4 hours of sparkline
+
+cell_probe() { # cell_probe <dev> -> 0 if it answers +CEREG
+  [ -c "$1" ] || return 1
+  rm -f /tmp/cereg.txt
+  ( cat "$1" > /tmp/cereg.txt 2>/dev/null ) & cp=$!
+  sleep 0.2
+  printf 'AT+CEREG=2\r\n' > "$1" 2>/dev/null
+  sleep 0.4
+  printf 'AT+CEREG?\r\n'  > "$1" 2>/dev/null
+  sleep 0.8
+  kill $cp 2>/dev/null; wait $cp 2>/dev/null
+  grep -q '+CEREG:' /tmp/cereg.txt 2>/dev/null
+}
+
+poll_cell() {
+  # Give up permanently after repeated failures rather than probing forever.
+  [ "$CELL_FAILS" -ge 5 ] && return 0
+  # Probe exactly ONCE per cycle and parse that same response. An earlier version
+  # probed to pick the channel and then probed again to read it, and the second
+  # back-to-back read on the same channel is unreliable -- it discarded a
+  # perfectly good first response.
+  got=1
+  if [ -n "$CELL_CH" ] && cell_probe "$CELL_CH"; then
+    got=0
+  else
+    CELL_CH=""
+    for c in $CANDIDATES; do
+      if cell_probe "$c"; then CELL_CH="$c"; got=0; break; fi
+    done
+  fi
+  [ "$got" = 0 ] || { CELL_FAILS=$((CELL_FAILS + 1)); return 0; }
+  CELL_FAILS=0
+  # 3GPP documents +CEREG: <n>,<stat>[,"<tac>","<ci>"[,<AcT>]], but this modem
+  # emits an extra quoted field:
+  #     +CEREG: 2,1,"467","A","1A7901",7
+  # Taking fixed column 4 as the cell ID therefore yielded "A". Parse by quoted
+  # token instead: the TAC is always the first and the cell ID the last, which
+  # is correct for both the two-field and three-field variants.
+  line=$(tr -d '\r' < /tmp/cereg.txt | grep '+CEREG:' | tail -1)
+  quoted=$(printf '%s' "$line" | tr ',' '\n' | grep '"' | tr -d '"' | grep -v '^$')
+  TAC=$(printf '%s' "$quoted" | head -1)
+  CELLID=$(printf '%s' "$quoted" | tail -1)
+  case "$TAC" in    *[!0-9A-Fa-f]*|'') TAC="" ;; esac
+  case "$CELLID" in *[!0-9A-Fa-f]*|'') CELLID="" ;; esac
+}
+
+hist_push() { # keep a small rolling RSRP ring in tmpfs for the UI sparkline
+  [ -n "$1" ] || return 0
+  printf '%s\n' "$1" >> "$HIST" 2>/dev/null
+  n=$(wc -l < "$HIST" 2>/dev/null || echo 0)
+  [ "$n" -gt "$HIST_MAX" ] && { tail -n "$HIST_MAX" "$HIST" > "$HIST.t" 2>/dev/null && mv "$HIST.t" "$HIST"; }
+  return 0
+}
+
 PING_TARGET=1.1.1.1
 BAD=""
+TAC=""; CELLID=""; slow=0
 select_channel
 empty_streak=0
 prev_rx=""; prev_tx=""; prev_t=""
@@ -161,7 +232,16 @@ while true; do
   # Uplink latency (empty when the link is down).
   LAT=$(ping -c1 -W1 "$PING_TARGET" 2>/dev/null | grep -oE 'time=[0-9.]+' | head -1 | cut -d= -f2)
 
-  printf '{"rsrp":"%s","rsrq":"%s","rssi":"%s","earfcn":"%s","band":"%s","mode":"%s","dl_kbps":"%s","ul_kbps":"%s","latency_ms":"%s","uptime":"%s","rx_bytes":"%s","tx_bytes":"%s"}' \
-    "$RSRP" "$RSRQ" "$RSSI" "$EARFCN" "$BAND" "$MODE" "$DL_KBPS" "$UL_KBPS" "$LAT" "$UPTIME" "$RX" "$TX" > /tmp/signal.json
+  # Roughly once a minute: serving-cell read and one sparkline sample.
+  # An iteration takes about 7s, not the 5s of the sleep alone.
+  slow=$((slow + 1))
+  if [ "$slow" -ge 8 ]; then
+    slow=0
+    poll_cell
+    hist_push "$RSRP"
+  fi
+
+  printf '{"rsrp":"%s","rsrq":"%s","rssi":"%s","earfcn":"%s","band":"%s","mode":"%s","dl_kbps":"%s","ul_kbps":"%s","latency_ms":"%s","uptime":"%s","rx_bytes":"%s","tx_bytes":"%s","tac":"%s","cellid":"%s"}' \
+    "$RSRP" "$RSRQ" "$RSSI" "$EARFCN" "$BAND" "$MODE" "$DL_KBPS" "$UL_KBPS" "$LAT" "$UPTIME" "$RX" "$TX" "$TAC" "$CELLID" > /tmp/signal.json
   sleep 5
 done

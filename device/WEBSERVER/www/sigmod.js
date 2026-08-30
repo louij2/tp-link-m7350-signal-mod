@@ -31,6 +31,7 @@
   var CGI_CTL    = '/cgi-bin/control.sh';
   var CGI_DEV    = '/cgi-bin/deviceinfo.sh';
   var CGI_KEYS   = '/cgi-bin/keys.sh';
+  var CGI_HIST   = '/cgi-bin/signal_hist.sh';
 
   // Custom device name (AirPort-style). Change this to rebrand the UI.
   var MODEL = 'M7350+ Extreme';
@@ -56,9 +57,9 @@
     '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:block!important;column-width:330px!important;column-gap:12px!important;}',
     '.statusPage>.sigmod-card{margin:0 0 12px!important;width:auto!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
     '.statusPage>.pinSection,.statusPage>.connectionSection,.statusPage>.wifiSection,.statusPage>.statisticSection,.statusPage>.simSection,.statusPage>.dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0 0 12px!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
-    '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;}',
+    '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;min-width:0!important;overflow-wrap:break-word!important;}',
     '.statusPage .content-group>.content-label{float:none!important;width:auto!important;margin-right:0!important;}',
-    '.statusPage .content-group>label{white-space:normal!important;}',
+    '.statusPage .content-group>label{white-space:normal!important;min-width:0!important;overflow-wrap:break-word!important;}',
     '.statusPage .statusHeader{padding:0 0 8px!important;margin:0 0 10px!important;line-height:1.3!important;}',
     '.statusHeader{font-size:12px!important;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;font-weight:600;margin:0 0 10px!important;padding:0 0 8px!important;border-bottom:1px solid #2a313b!important;}',
     /* Stock rows: label stacked above value, same visual language as the mod's
@@ -150,6 +151,9 @@
     '.sigmod-key .kt{font-size:13px;color:#e6edf3!important;overflow-wrap:break-word;}',
     '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:break-word;font-family:monospace;}',
     '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
+    '.sigmod-spark{margin-top:12px;padding-top:10px;border-top:1px solid #2a313b;}',
+    '.sigmod-spark .sk{font-size:10px;color:#9aa4b2!important;margin-bottom:4px;}',
+    '.sigmod-spark .sk:last-child{margin:4px 0 0;}',
     '.sigmod-bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;}',
     '.sigmod-bars i{width:3px;background:#34d399!important;background-color:#34d399!important;border-radius:1px;opacity:.25;}'
   ].join('');
@@ -352,7 +356,11 @@
         stat('battery', 'Battery', 'spBatt') +
         stat('clock', 'Uptime', 'spUp') +
         stat('globe', 'WAN IP', 'spWan') +
-      '</div>';
+        stat('signal', 'Cell ID', 'spCell') +
+        stat('globe', 'TAC', 'spTac') +
+      '</div>' +
+      '<div class="sigmod-spark"><div class="sk">Signal, last 4 hours</div>' +
+        '<div id="spSpark"></div></div>';
 
     var ctl = document.createElement('div');
     ctl.className = 'sigmod-card';
@@ -436,6 +444,7 @@
     refreshCtlState();
     fetchDeviceInfo();
     loadKeys();
+    fetchHist();
   }
 
   // IMEI / IMSI / SIM come back redacted unless we present the control password,
@@ -680,6 +689,46 @@
     };
   }
 
+  // RSRP sparkline. Fixed -120..-60 dBm scale so the shape means the same thing
+  // every time you look at it; an auto-scaled sparkline makes a flat-but-weak
+  // signal look identical to a flat-but-strong one.
+  function drawSpark(csv) {
+    var host = document.getElementById('spSpark');
+    if (!host) return;
+    var raw = (csv || '').split(',');
+    var v = [];
+    for (var i = 0; i < raw.length; i++) {
+      var n = parseFloat(raw[i]);
+      if (!isNaN(n)) v.push(n);
+    }
+    if (v.length < 2) { host.innerHTML = '<span class="sk">collecting…</span>'; return; }
+    var W = 260, H = 34, LO = -120, HI = -60;
+    var pts = [];
+    for (var j = 0; j < v.length; j++) {
+      var y = (v[j] - LO) / (HI - LO);
+      if (y < 0) y = 0; if (y > 1) y = 1;
+      pts.push(((j / (v.length - 1)) * W).toFixed(1) + ',' + ((1 - y) * H).toFixed(1));
+    }
+    var last = v[v.length - 1];
+    var col = last >= -85 ? '#34d399' : last >= -100 ? '#fbbf24' : '#f87171';
+    host.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
+        'style="width:100%;height:' + H + 'px;display:block">' +
+        '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col +
+        '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '</svg>' +
+      '<div class="sk">' + Math.min.apply(null, v).toFixed(0) + ' to ' +
+        Math.max.apply(null, v).toFixed(0) + ' dBm · ' + v.length + ' samples</div>';
+  }
+
+  function fetchHist() {
+    if (!document.getElementById('spSpark')) return;
+    var x = new XMLHttpRequest();
+    x.onload = function () { try { drawSpark(x.responseText); } catch (e) {} };
+    x.open('GET', CGI_HIST + '?t=' + (new Date()).getTime(), true);
+    x.send();
+  }
+
   function updatePanels() {
     var set = function (id, txt) { var e = document.getElementById(id); if (e) e.textContent = txt; };
     set('spSig', (last.rsrp ? last.rsrp + ' dBm' : '--'));
@@ -689,6 +738,13 @@
     set('spUl', fmtRate(last.ul_kbps));
     set('spLat', last.latency_ms ? Math.round(parseFloat(last.latency_ms)) + ' ms' : '--');
     set('spUp', fmtDur(last.uptime));
+    set('spCell', (function () {
+      if (!last.cellid) return '—';
+      var n = parseInt(last.cellid, 16);
+      if (isNaN(n)) return last.cellid;
+      return last.cellid + ' (eNB ' + Math.floor(n / 256) + '.' + (n % 256) + ')';
+    })());
+    set('spTac', last.tac || '—');
   }
 
   /* ==================================================================== *
@@ -715,6 +771,9 @@
   setInterval(tick, 1500);
   // Refresh control/system state a bit less often than signal.
   setInterval(function () { if (document.getElementById('sigmodPanel')) refreshCtlState(); }, 6000);
+  // The ring only gains a sample a minute, so polling it faster is wasted work
+  // on a single slow core.
+  setInterval(fetchHist, 60000);
 
   var quick = [50, 150, 300, 500, 800, 1200, 1800, 2500];
   for (var i = 0; i < quick.length; i++) { setTimeout(tick, quick[i]); }

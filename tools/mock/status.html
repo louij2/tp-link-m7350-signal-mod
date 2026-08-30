@@ -28,7 +28,9 @@
 
       <!-- Also hidden, and positioned by the stock stylesheet. Dissolving these
            with display:contents released their contents into the page. -->
-      <div class="popup" id="errMessagePopup"><div class="textContent">An error occurred.</div></div>
+      <!-- Class list matches the firmware exactly (no "hide" class); the framework
+           hides this at runtime with an inline style, so the mock does the same. -->
+      <div class="popup" id="errMessagePopup" style="display:none"><div class="textContent">An error occurred.</div></div>
       <div class="help-popup hide" id="helpPopup"><div class="help-content" id="helpContent">Help text.</div></div>
 
       <div class="connectionSection">

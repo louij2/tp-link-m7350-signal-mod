@@ -2,6 +2,45 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.3.1] — 2026-08-30  ·  **status page actually works on the device**
+
+2.3.0 shipped a status page that was broken on real hardware. It had been
+"verified" against a mock whose DOM was invented rather than observed, so none of
+the following showed up until it was opened on the router.
+
+### Fixed
+- **The firmware's fixed geometry was never overridden.** `settings.css` pins
+  `.statusPage` to `width:850px; height:500px; min-height:630px` and floats the
+  sections at `49.5%` with `height:310px`, with `height:25px` rows and floated
+  labels. `min-height:630px` is why a tall empty band appeared above the cards:
+  the container holds its height whether or not its children are still in flow.
+  Every one of those declarations is now undone explicitly.
+- **A SIM PIN unlock panel appeared on the status page.** `display:grid!important`
+  on `.pinSection` overrode the firmware's own `.hide` class. Section styling is
+  scoped with `:not(.hide)`, and `.hide` is forced to `display:none` so a stock
+  hide that works by clipping cannot be defeated either.
+- **Cards overlapped each other.** `display:contents` dissolved `.popup` and
+  `.help-popup`, which the stock stylesheet positions itself. The mod no longer
+  restructures any firmware element; the dashboard layout applies only to
+  containers the mod owns.
+- **The SSH key list rendered one character wide.** A flex item defaults to
+  `min-width:auto`, and `overflow-wrap:anywhere` then breaks at every character.
+- **The page used only about two thirds of the window**, because the firmware
+  constrains the wrappers around `.statusPage`. With that lifted, cards get real
+  width and the long identifiers (IMEI, IMSI, MAC) stop breaking mid-token.
+
+### Changed
+- Status cards and the mod's own cards now pack in one masonry flow, so a short
+  card no longer strands the space beneath it. Security and About Device are
+  welded into a single unbreakable unit so they always stay stacked together.
+- About Device is regrouped: what the device is, what network it is on, then the
+  subscriber identifiers together, keeping the long values adjacent.
+- `tools/mock` now carries the firmware's real geometry and hierarchy,
+  transcribed from the device, including the hidden `pinSection` and both popups.
+  Every fault above reproduces there. The previous mock modelled what the
+  firmware was assumed to do rather than what it does, which is the only reason
+  any of this reached a release.
+
 ## [2.3.0] — 2026-08-29  ·  **safe by default**
 
 ### Security

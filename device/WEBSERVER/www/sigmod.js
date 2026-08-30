@@ -47,7 +47,19 @@
     '.statusPage>div,.statusPage .container,#content .container>div{background:#171b21!important;border-color:#2a313b!important;}',
     /* --- Status-page redesign: card-ify the actual stock sections, cut
        whitespace so the stock content matches the mod cards. --- */
-    '.statusPage{padding:0!important;margin:0!important;}',
+    /* Neutralise the firmware's fixed geometry BEFORE laying anything out.
+     * settings.css pins .statusPage to width:850px/height:500px/min-height:630px
+     * and floats the sections at 49.5% with height:310px, with fixed-height rows
+     * and floated labels. Every one of those has to be undone explicitly or the
+     * container keeps its 630px whether or not anything is in it -- which is
+     * what produced a tall empty band above the cards. */
+    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:block!important;column-width:330px!important;column-gap:12px!important;}',
+    '.statusPage>.sigmod-card{margin:0 0 12px!important;width:auto!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
+    '.statusPage>.pinSection,.statusPage>.connectionSection,.statusPage>.wifiSection,.statusPage>.statisticSection,.statusPage>.simSection,.statusPage>.dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0 0 12px!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
+    '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;}',
+    '.statusPage .content-group>.content-label{float:none!important;width:auto!important;margin-right:0!important;}',
+    '.statusPage .content-group>label{white-space:normal!important;}',
+    '.statusPage .statusHeader{padding:0 0 8px!important;margin:0 0 10px!important;line-height:1.3!important;}',
     '.statusHeader{font-size:12px!important;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;font-weight:600;margin:0 0 10px!important;padding:0 0 8px!important;border-bottom:1px solid #2a313b!important;}',
     /* Stock rows: label stacked above value, same visual language as the mod's
      * own .sigmod-stat tiles, so the two halves of the page read as one UI. */
@@ -60,30 +72,25 @@
      * moved or duplicated -- every stock row stays exactly where the firmware
      * put it and merely reflows into columns, so no value can go missing and
      * the page still works if TP-LINK changes the DOM. */
-    '.connectionSection,.wifiSection,.statisticSection,.pinSection,.simSection,.dataSection{background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;margin:0 0 12px!important;box-shadow:none!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(142px,1fr))!important;gap:11px 14px!important;align-content:start!important;}',
-    /* ---- Dashboard grid (Grafana-style) --------------------------------
-     * .statusPage and its plain wrapper divs are dissolved with
-     * display:contents so the real stock sections AND the mod's own cards all
-     * become direct items of ONE grid. Nothing is moved in the DOM -- purely
-     * a layout change -- so every stock row keeps its element, its id and its
-     * firmware updates. Wrappers whose class contains "ection" are excluded so
-     * the sections themselves always survive as cards, no matter how deeply
-     * the firmware nests them. */
-    /* Masonry packing via CSS multi-column: cards flow into the next slot the
-     * moment the previous one ends, so there are no aligned row edges and no
-     * dead space under the short cards -- the whole width stays busy and the
-     * page stops scrolling. break-inside keeps a card from being split. */
-    '.sigmod-dash{display:block!important;column-width:300px!important;column-gap:12px!important;max-width:none!important;width:auto!important;}',
-    '.sigmod-dash>.sigmod-card,.sigmod-dash .connectionSection,.sigmod-dash .wifiSection,.sigmod-dash .statisticSection,.sigmod-dash .pinSection,.sigmod-dash .simSection,.sigmod-dash .dataSection{break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
-    '.sigmod-dash .statusPage{display:contents!important;}',
-    '.sigmod-dash .statusPage>div:not([class*="ection"]),.sigmod-dash .statusPage>div:not([class*="ection"])>div:not([class*="ection"]){display:contents!important;}',
-    '.sigmod-dash>.sigmod-card,.sigmod-dash .connectionSection,.sigmod-dash .wifiSection,.sigmod-dash .statisticSection,.sigmod-dash .pinSection,.sigmod-dash .simSection,.sigmod-dash .dataSection{margin:0 0 12px!important;width:auto!important;}',
+    '.connectionSection:not(.hide),.wifiSection:not(.hide),.statisticSection:not(.hide),.pinSection:not(.hide),.simSection:not(.hide),.dataSection:not(.hide){background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;box-shadow:none!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important;gap:10px 12px!important;align-content:start!important;}',
+    /* The mod's OWN cards get the dashboard grid. The stock sections are left
+     * exactly where the firmware's CSS puts them -- an earlier version dissolved
+     * their wrappers with display:contents and re-flowed everything into one
+     * masonry column set, which overlapped cards on the real device because the
+     * stock stylesheet positions those blocks itself. Only style what we own. */
+    '#sigmodAbout .sigmod-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important;}',
+    '#sigmodAbout .sigmod-stat .v{font-variant-numeric:tabular-nums;letter-spacing:-0.01em;}',
+    '.sigmod-col{display:flex!important;flex-direction:column!important;gap:12px!important;min-width:0!important;margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
+    '.sigmod-col>.sigmod-card{margin:0!important;height:auto!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;box-sizing:border-box!important;}',
+    '.sigmod-cards{display:block!important;column-width:300px!important;column-gap:12px!important;margin:12px 0!important;}',
+    '.sigmod-cards>.sigmod-card{margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;width:auto!important;}',
     /* headers and any full-width controls span every column */
     '.statusPage .statusHeader{grid-column:1/-1!important;}',
     '.statusPage .btn,.statusPage button,.statusPage input[type="button"],.statusPage input[type="submit"]{justify-self:start!important;}',
     /* two-column top row (Connection | Wi-Fi) with a real gap, Stats full width */
-    '.statusPage>.hide,.statusPage>div:not(.pinSection){overflow:visible!important;}',
-    '.connectionSection,.wifiSection{width:auto!important;}',
+    '.connectionSection:not(.hide),.wifiSection:not(.hide){width:auto!important;}',
+    /* Belt and braces: whatever the stock .hide does, keep it hidden. */
+    '.statusPage .hide,.statusPage .popup.hide,.statusPage .help-popup.hide{display:none!important;}',
     'a.icon-help,.icon-help{border:0!important;background:transparent!important;padding:0!important;margin:0!important;}',
     /* Bootstrap components used across Advanced/Wizard/SMS -- force dark so no
      * light-on-light text remains anywhere ("consider all objects"). */
@@ -119,13 +126,14 @@
      * the panel edge (the stock CSS gives it a fixed height). */
     '#loginStatus,.section-status{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:16px 18px 18px!important;box-sizing:border-box!important;}',
     '#content,#loginContainer{height:auto!important;overflow:visible!important;}',
+    '#content,#content>.container,#content .container{width:auto!important;max-width:none!important;margin-left:0!important;margin-right:0!important;}',
     '#deviceName{font-weight:600;}',
     /* Hide the Wizard tab (first-run setup) -- not needed day to day. */
     '#tabWizard{display:none!important;}',
     /* Mod panels ------------------------------------------------------- */
     '.sigmod-card{background:#171b21!important;border:1px solid #2a313b;border-radius:10px;padding:12px 14px;margin:12px 0;}',
     '.sigmod-card h3{margin:0 0 10px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;display:flex;align-items:center;gap:8px;}',
-    '.sigmod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:11px 14px;}',
+    '.sigmod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px 12px;}',
     '.sigmod-stat{min-width:0;overflow-wrap:anywhere;}',
     '.sigmod-stat .k{display:flex;align-items:center;gap:7px;font-size:11px;color:#9aa4b2!important;}',
     '.sigmod-stat .v{font-size:14px;color:#e6edf3!important;margin-top:2px;overflow-wrap:break-word;font-variant-numeric:tabular-nums;}',
@@ -138,8 +146,9 @@
     '.sigmod-pill{font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid currentColor;}',
     '.sigmod-keys{margin-top:10px;display:flex;flex-direction:column;gap:8px;}',
     '.sigmod-key{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#1d232c!important;border:1px solid #2a313b;border-radius:8px;padding:8px 10px;}',
-    '.sigmod-key .kt{font-size:13px;color:#e6edf3!important;overflow-wrap:anywhere;}',
-    '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:anywhere;font-family:monospace;}',
+    '.sigmod-key>div:first-child{min-width:0;flex:1 1 auto;}',
+    '.sigmod-key .kt{font-size:13px;color:#e6edf3!important;overflow-wrap:break-word;}',
+    '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:break-word;font-family:monospace;}',
     '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
     '.sigmod-bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;}',
     '.sigmod-bars i{width:3px;background:#34d399!important;background-color:#34d399!important;border-radius:1px;opacity:.25;}'
@@ -299,8 +308,12 @@
     return !!(document.getElementById('top_menu') || document.getElementById('tabStatus'));
   }
   function panelHost() {
-    // Prefer the active status content; fall back to the main container.
-    return document.querySelector('#content .container') ||
+    // Prefer .statusPage: putting our cards in the firmware's own container lets
+    // them share one masonry flow with the stock sections, so a short stock card
+    // no longer strands the space beneath it. We only ever APPEND our own
+    // elements -- the firmware's nodes are never moved or restructured.
+    return document.querySelector('.statusPage') ||
+           document.querySelector('#content .container') ||
            document.getElementById('container') ||
            document.getElementById('content');
   }
@@ -371,16 +384,18 @@
     about.innerHTML =
       '<h3>' + svg('chip', 15) + 'About Device</h3>' +
       '<div class="sigmod-grid">' +
+        // Grouped: what the device is, then what network it is on, then the
+        // subscriber identifiers (which are the long ones, kept together).
         stat('chip', 'Model', 'abModel') +
-        stat('advanced', 'Firmware', 'abFw') +
         stat('chip', 'Hardware', 'abHw') +
+        stat('advanced', 'Firmware', 'abFw') +
+        stat('globe', 'Operator', 'abOper') +
+        stat('advanced', 'Network Mode', 'abNet') +
+        stat('signal', 'APN', 'abApn') +
         stat('signal', 'IMEI', 'abImei') +
-        stat('globe', 'MAC', 'abMac') +
         stat('usb', 'IMSI', 'abImsi') +
         stat('sms', 'SIM Number', 'abSim') +
-        stat('globe', 'Operator', 'abOper') +
-        stat('signal', 'APN', 'abApn') +
-        stat('advanced', 'Network Mode', 'abNet') +
+        stat('globe', 'MAC', 'abMac') +
       '</div>';
 
     var sec = document.createElement('div');
@@ -397,10 +412,24 @@
         'Keys here grant root SSH. Both actions need the control password, and ' +
         'the last remaining key cannot be revoked so you cannot lock yourself out.</div>';
 
-    host.appendChild(sys);
-    host.appendChild(ctl);
-    host.appendChild(sec);
-    host.appendChild(about);
+    // Our cards live in a container we own, so the grid can never interfere with
+    // however the firmware chooses to lay out its own sections.
+    if (host.className.indexOf('statusPage') >= 0) {
+      // Same flow as the stock sections. Security and About Device are stacked
+      // in one cell so the pair fills the column rather than leaving a gap.
+      var col = document.createElement('div');
+      col.className = 'sigmod-col';
+      col.id = 'sigmodSecCol';
+      col.appendChild(sec); col.appendChild(about);
+      host.appendChild(sys); host.appendChild(ctl); host.appendChild(col);
+    } else {
+      var wrap = document.createElement('div');
+      wrap.className = 'sigmod-cards';
+      wrap.id = 'sigmodCards';
+      wrap.appendChild(sys); wrap.appendChild(ctl);
+      wrap.appendChild(sec); wrap.appendChild(about);
+      host.appendChild(wrap);
+    }
     wireControls();
     var ak = document.getElementById('btnAddKey');   if (ak) ak.onclick = addKey;
     var cp = document.getElementById('btnChangePw'); if (cp) cp.onclick = changePw;
@@ -455,10 +484,6 @@
     if (!document.getElementById('sigRow')) return;   // wait for status view
     var host = panelHost();
     if (!host) return;
-    // Dashboard layout is opt-in per element: only the container that actually
-    // holds the Status tab gets it, so Advanced/SMS keep their stock layout.
-    // Re-applied every tick because the framework rebuilds <body> from templates.
-    if (host.className.indexOf('sigmod-dash') < 0) host.className += ' sigmod-dash';
     buildPanels(host);
   }
 

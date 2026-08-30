@@ -8,54 +8,58 @@
 <link rel="stylesheet" href="stock.css">
 <script src="sigmod.js"></script>
 </head><body>
-
-<div id="header"><span class="icon-logo">TP-LINK</span><span id="deviceName">M7350</span></div>
 <div id="top_menu"></div>
+<div id="header"><span class="icon-logo">TP-LINK</span> <span id="deviceName">M7350</span></div>
 <ul class="tabs">
-  <li id="tabStatus" class="active">Status</li>
-  <li id="tabWizard">Wizard</li>
-  <li id="tabSms">SMS</li>
-  <li id="tabAdvanced">Advanced</li>
+  <li id="tabStatus" class="active">Status</li><li>SMS</li><li id="tabWizard">Wizard</li><li>Advanced</li>
 </ul>
-
 <div id="content">
- <div class="container">
-  <div class="statusPage">
-   <div>
+  <div class="container">
+    <div class="statusPage">
 
-    <div class="connectionSection">
-      <div class="statusHeader">Internet Connection</div>
-      <div class="content-group"><label class="content-label">Network Type</label><label id="networkType">4G</label></div>
-      <div class="content-group"><label class="content-label">Connection Status</label><label id="connectionStatus">Connected</label></div>
-      <div class="content-group"><label class="content-label">ISP</label><label id="ispName">Three UK</label></div>
-      <div class="content-group"><label class="content-label">IP Address</label><label id="wanIp">10.114.22.87</label></div>
-      <div class="content-group"><label class="content-label">Connected Time</label><label id="connTime">2 days 03:10:30</label></div>
+      <!-- Hidden by the firmware. If a mod rule ever forces it visible, a PIN
+           unlock panel appears on the status page -- which is exactly what a
+           display:grid!important once did. Kept here so that regresses loudly. -->
+      <div class="pinSection hide">
+        <div class="statusHeader">SIM Lock</div>
+        <div class="content-group"><label class="content-label">PIN</label><input type="password"></div>
+        <div class="content-action"><button class="btn btn-success">Apply</button></div>
+      </div>
+
+      <!-- Also hidden, and positioned by the stock stylesheet. Dissolving these
+           with display:contents released their contents into the page. -->
+      <!-- Class list matches the firmware exactly (no "hide" class); the framework
+           hides this at runtime with an inline style, so the mock does the same. -->
+      <div class="popup" id="errMessagePopup" style="display:none"><div class="textContent">An error occurred.</div></div>
+      <div class="help-popup hide" id="helpPopup"><div class="help-content" id="helpContent">Help text.</div></div>
+
+      <div class="connectionSection">
+        <div class="statusHeader">Internet Connection</div>
+        <div class="content-group noInput"><label class="content-label">Network Type</label><label id="networkType">4G</label></div>
+        <div class="content-group noInput"><label class="content-label">Connection Status</label><label id="connectionStatus">Connected</label></div>
+        <div class="content-group noInput"><label class="content-label">ISP</label><label>Three UK</label></div>
+        <div class="content-group noInput"><label class="content-label">IP Address</label><label>10.114.22.87</label></div>
+        <div class="content-group noInput"><label class="content-label">Connected Time</label><label>2 days 03:10:30</label></div>
+        <div class="content-group noInput"><label class="content-label">Data Settings</label><label><a href="#">Data Settings</a></label></div>
+      </div>
+
+      <div class="wifiSection">
+        <div class="statusHeader">Wireless</div>
+        <div class="content-group noInput"><label class="content-label">SSID</label><label>.Mini</label></div>
+        <div class="content-group noInput"><label class="content-label">Security</label><label>WPA2-PSK</label></div>
+        <div class="content-group noInput hide"><label class="content-label">Hidden Field</label><label>should stay hidden</label></div>
+        <div class="content-group noInput"><label class="content-label">Clients</label><label>2</label></div>
+        <div class="content-group noInput"><label class="content-label">Wireless Band</label><label>2.4GHz</label></div>
+      </div>
+
+      <div class="statisticSection">
+        <div class="statusHeader">Statistics</div>
+        <div class="content-group noInput horizontal"><label class="content-label">Total Used</label><label>10.42 GB</label></div>
+        <div class="content-group noInput"><label class="content-label">Downloaded</label><label>9.11 GB</label></div>
+        <div class="content-group noInput"><label class="content-label">Uploaded</label><label>1.31 GB</label></div>
+      </div>
+
     </div>
-
-    <div class="wifiSection">
-      <div class="statusHeader">Wireless</div>
-      <div class="content-group"><label class="content-label">SSID</label><label id="ssid">.Mini</label></div>
-      <div class="content-group"><label class="content-label">Security</label><label id="wsec">WPA2-PSK</label></div>
-      <div class="content-group"><label class="content-label">Clients</label><label id="clients">2</label></div>
-      <div class="content-group"><label class="content-label">Channel</label><label id="chan">Auto (6)</label></div>
-    </div>
-
-    <div class="statisticSection">
-      <div class="statusHeader">Data Usage</div>
-      <div class="content-group"><label class="content-label">Used This Month</label><label id="used">10.42 GB</label></div>
-      <div class="content-group"><label class="content-label">Total Downloaded</label><label id="dl">9.11 GB</label></div>
-      <div class="content-group"><label class="content-label">Total Uploaded</label><label id="ul">1.31 GB</label></div>
-    </div>
-
-    <div class="pinSection">
-      <div class="statusHeader">SIM</div>
-      <div class="content-group"><label class="content-label">PIN Status</label><label id="pin">Disabled</label></div>
-      <button class="btn">Manage</button>
-    </div>
-
-   </div>
   </div>
- </div>
 </div>
-
 </body></html>

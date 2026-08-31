@@ -1,0 +1,50 @@
+name: Hardware revision report
+description: Tell us whether this works on your M7350 revision (or help add support)
+title: "[revision] M7350 vX.XX <REGION>"
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing. **You do not need to install anything to file this.**
+
+        Run the read-only probe and paste the output below. It changes nothing on
+        the device: it only reads, and it never sends an AT command that alters
+        modem state.
+
+        ```bash
+        git clone https://github.com/louij2/tp-link-m7350-signal-mod
+        cd tp-link-m7350-signal-mod && scripts/probe.sh
+        ```
+  - type: input
+    id: revision
+    attributes:
+      label: Hardware revision and region
+      description: From the probe's "Identity" section, or the label under the battery
+      placeholder: "v3.20 EU"
+    validations:
+      required: true
+  - type: textarea
+    id: probe
+    attributes:
+      label: Probe output
+      description: Paste the whole thing, including the AT channel table
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: state
+    attributes:
+      label: What happened
+      options:
+        - Have not installed, probe output only
+        - Installed and it works
+        - Installed, mostly works with problems (describe below)
+        - Installed and it did not work
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything that went wrong
+      description: Screenshots welcome. If the status page looks odd, that is useful.

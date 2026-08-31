@@ -91,6 +91,44 @@ showing live values from the modem rather than fixtures:
 
 ---
 
+## Does it work on my device?
+
+**Find out without installing anything.** The probe is read-only: it reads
+identity, web-UI layout, AT-channel capabilities and resources, and changes
+nothing. It never sends an AT command that alters modem state.
+
+```bash
+scripts/probe.sh
+```
+
+It prints a report designed to be pasted straight into an issue. **Please do
+open one even if you don't install the mod** — a probe output from a revision
+nobody has tested is genuinely useful, and it is the main thing holding this back
+from supporting more hardware.
+
+### Known compatibility
+
+| Revision | Region | Firmware | Status | Notes |
+|---|---|---|---|---|
+| **v3.20** | EU | 1.1.3 Build 161226 | ✅ Fully tested | The development device |
+| v1 / v2 / v4 | any | any | ❓ Untested | [Send a probe report](../../issues/new?template=revision-report.yml) |
+| v3.x | non-EU | any | ❓ Untested | [Send a probe report](../../issues/new?template=revision-report.yml) |
+
+What varies between revisions, and what the probe checks:
+
+- **Web assets.** The mod injects into `status.html` and expects `.statusPage`,
+  a `#statusContent` wrapper and `connectionSection`/`wifiSection`/
+  `statisticSection`. A different layout means the CSS needs adjusting, not
+  rewriting.
+- **AT channels.** Which of `/dev/smd7`, `smd8`, `smd11` answers which command
+  differs even within one revision. On the dev device `$QCRSRP?` works on smd8
+  and smd11 but errors on smd7, while `+COPS` is the other way round. The daemon
+  already probes and fails over, but the probe tells us what to expect.
+- **`AT+CSIM`.** If your device answers it, it can manage eSIM profiles on-board,
+  which the v3.20 cannot. That would be a genuinely new capability worth adding.
+
+---
+
 ## ⚠️ Safety & scope
 
 - **You need root ADB access already.** See *Gaining access* below — the initial

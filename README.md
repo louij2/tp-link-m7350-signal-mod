@@ -1,6 +1,6 @@
 # TP-Link M7350 — LTE signal stats + dark UI mod
 
-> **Use [v2.3.1](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
+> **Use [v2.4.0](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
 > later.** Earlier versions were progressively less safe by default: v2.0.0
 > shipped the optional root tools (FTP/Telnet/web console) with **no
 > authentication**; v2.1.0 added a password gate but still fell back to
@@ -35,6 +35,10 @@ GL.iNet router): you can watch signal quality and the serving band straight from
 | Live **throughput** (↓/↑) + **latency** + **uptime** | Same status views |
 | **System** panel (temp, WAN IP, signal bar, throughput, uptime) | Post-login Status tab |
 | **Controls** panel: **Reboot**, **ADB on/off**, **TTL-fix on/off** | Post-login Status tab |
+| **RSRP sparkline** (4 hours of signal history) | System panel |
+| **Serving cell**: Cell ID, eNodeB, TAC | System panel |
+| **SIM identity**: ICCID + Carrier (SPN), read from the card | About Device |
+| **Drag-and-drop** card arrangement, saved on the router | Post-login Status tab |
 | **Prometheus** metrics endpoint (for Grafana) | `http://192.168.0.1/cgi-bin/metrics.sh` |
 | Modern dark theme with **inline-SVG icons** (readable on every page, incl. Advanced) | Whole web UI (login + admin) |
 | Root web console (optional) | `http://192.168.0.1/console.html` |
@@ -371,6 +375,58 @@ can't reach the USB-only device, so deployment is a local hook — until the dev
 behind a network path (e.g. tethered to a GL.iNet), where a self-hosted runner could
 do it on merge.
 
+## Using it as a travel LTE backup
+
+The M7350 makes a decent LTE fallback behind a travel router: the router repeats
+hotel Wi-Fi normally, and drops to the M7350 when that fails.
+
+### Automatic failover on a GL.iNet router
+
+In the GL.iNet admin panel:
+
+1. Configure **Repeater** for the hotel Wi-Fi.
+2. Configure **Tethering** for the USB-connected M7350.
+3. Under **Multi-WAN**, set **Repeater priority above Tethering**.
+
+Failover is the default mode once two WANs exist. It switches to LTE when the
+repeater drops and switches back on its own when it returns.
+
+> **Use a USB 2.0 cable or hub, not USB 3.0.** There is a documented bug on the
+> GL-MT3000 (Beryl AX) where USB tethering on the USB 3.0 port interferes with
+> the **2.4 GHz** repeater. Hotel Wi-Fi is very often 2.4 GHz, so this degrades
+> the exact link you are falling back *from*. Test it before you travel:
+> connect the repeater to a 2.4 GHz network, plug the M7350 in, and confirm the
+> repeater stays stable — then pull the repeater and confirm it cuts over.
+
+Turn **data roaming off** on the M7350 before travelling if it is only a backup,
+under *Advanced → Dial-up Settings → Data Roaming*. It is off by default
+(`roam_switch` is `0` in `/etc/config/network_status`), and it only governs data:
+the SIM may still register for calls and SMS abroad.
+
+### Using a removable eUICC ("physical eSIM") card
+
+A removable eUICC card goes in the SIM slot and holds several downloadable
+carrier profiles, which is useful for travel data.
+
+**The M7350 cannot manage profiles.** Verified by test on v3.20: `AT+CSIM`,
+`AT+CCHO` and `AT+CGLA` all return errors, so there is no APDU path to the ISD-R
+and no LPA can run on the device. Enable the profile you want on a phone, tablet
+or a PC card reader, then move the card to the router — it behaves as an ordinary
+SIM from that point.
+
+What the mod *can* do is tell you which profile is live. `AT+CRSM` **is**
+supported, so the daemon reads **ICCID** (`EF_ICCID`, 2FE2) and the **Carrier /
+SPN** (`EF_SPN`, 6F46) straight off the card and shows both in *About Device*.
+Both change when you switch profiles, which is otherwise invisible from the
+router.
+
+Cards with production GSMA certificates are the ones that work with real
+carriers; test-certificate cards (SGP.26) only talk to test servers. On a Mac,
+`lpac` and EasyLPAC drive a PC/SC reader — macOS has `PCSC.framework` built in,
+so no daemon is needed.
+
+---
+
 ## Roadmap / notes
 
 - **Onboard OLED**: the device has an SSD130x-class OLED driven by `/usr/bin/oledd`
@@ -386,6 +442,31 @@ do it on merge.
 ---
 
 ## Traps learned (save yourself the debugging)
+
+- **`!important` beats specificity, always.** A broad `i{background-color:
+  transparent!important}` glyph reset silently killed the signal bars, and later
+  `.statusPage .hide{display:none!important}` suppressed the firmware's entire
+  status block. The firmware unhides `#statusContent` with an *inline style*
+  while leaving the `hide` class on it, so an `!important` rule wins and hides
+  everything. Never force `display` on a class the firmware toggles.
+- **The stock sections are not direct children of `.statusPage`.** They live in
+  `#statusContent`, so `.statusPage > .connectionSection` matches nothing and the
+  firmware's `float:left`, 49.5% widths and fixed heights all survive. Use
+  descendant selectors.
+- **Read the firmware's CSS, don't model it.** `settings.css` pins `.statusPage`
+  to `width:850px; height:500px; min-height:630px`. That `min-height` is a tall
+  empty band above everything until you override it.
+- **Judge a daemon by its output, not by a PID.** `grep name /proc/*/cmdline`
+  matches the shell running the check, so a daemon dead for 23 hours looked
+  alive. Compare the mtime of what it writes instead.
+- **An AT channel can answer and still be useless.** `/dev/smd7` replies to `AT`
+  and `$QCSYSMODE` but rejects `$QCRSRP?`; smd8 and smd11 answer it but not
+  `+COPS`. Health checks must test the value you need, not liveness.
+- **A daemon loop iteration is ~7s, not the 5s of its `sleep`.** Wait two minutes
+  before concluding a slow-cadence feature is broken.
+- **`scp` needs `-O` here.** dropbear ships no `sftp-server`, and scp has used
+  SFTP by default since OpenSSH 9.0, so copies fail silently unless you check.
+
 
 - **`cat /dev/smd7` from a CGI hangs and kills lighttpd** → daemon+cache pattern.
 - **The JS framework rebuilds the body**, discarding static rows *and* trailing

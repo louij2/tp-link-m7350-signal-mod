@@ -33,6 +33,11 @@
       <div class="popup" id="errMessagePopup" style="display:none"><div class="textContent">An error occurred.</div></div>
       <div class="help-popup hide" id="helpPopup"><div class="help-content" id="helpContent">Help text.</div></div>
 
+      <!-- The firmware wraps the stock sections in #statusContent and leaves
+           the "hide" class on it, unhiding it with an INLINE style. Reproduced
+           exactly: a mod rule that forces .hide to display:none !important
+           suppresses this whole block, which is precisely what happened. -->
+      <div class="hide" id="statusContent" style="display:block">
       <div class="connectionSection">
         <div class="statusHeader">Internet Connection</div>
         <div class="content-group noInput"><label class="content-label">Network Type</label><label id="networkType">4G</label></div>
@@ -59,6 +64,7 @@
         <div class="content-group noInput"><label class="content-label">Uploaded</label><label>1.31 GB</label></div>
       </div>
 
+      </div>
     </div>
   </div>
 </div>

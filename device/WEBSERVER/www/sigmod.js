@@ -32,6 +32,7 @@
   var CGI_DEV    = '/cgi-bin/deviceinfo.sh';
   var CGI_KEYS   = '/cgi-bin/keys.sh';
   var CGI_HIST   = '/cgi-bin/signal_hist.sh';
+  var CGI_TILES  = '/cgi-bin/tiles.sh';
 
   // Custom device name (AirPort-style). Change this to rebrand the UI.
   var MODEL = 'M7350+ Extreme';
@@ -55,8 +56,8 @@
      * container keeps its 630px whether or not anything is in it -- which is
      * what produced a tall empty band above the cards. */
     '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:block!important;column-width:330px!important;column-gap:12px!important;}',
-    '.statusPage>.sigmod-card{margin:0 0 12px!important;width:auto!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
-    '.statusPage>.pinSection,.statusPage>.connectionSection,.statusPage>.wifiSection,.statusPage>.statisticSection,.statusPage>.simSection,.statusPage>.dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0 0 12px!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
+    '.statusPage .sigmod-card{margin:0 0 12px!important;width:auto!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
+    '.statusPage .pinSection,.statusPage .connectionSection,.statusPage .wifiSection,.statusPage .statisticSection,.statusPage .simSection,.statusPage .dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0 0 12px!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
     '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;min-width:0!important;overflow-wrap:break-word!important;}',
     '.statusPage .content-group>.content-label{float:none!important;width:auto!important;margin-right:0!important;}',
     '.statusPage .content-group>label{white-space:normal!important;min-width:0!important;overflow-wrap:break-word!important;}',
@@ -90,8 +91,13 @@
     '.statusPage .btn,.statusPage button,.statusPage input[type="button"],.statusPage input[type="submit"]{justify-self:start!important;}',
     /* two-column top row (Connection | Wi-Fi) with a real gap, Stats full width */
     '.connectionSection:not(.hide),.wifiSection:not(.hide){width:auto!important;}',
-    /* Belt and braces: whatever the stock .hide does, keep it hidden. */
-    '.statusPage .hide,.statusPage .popup.hide,.statusPage .help-popup.hide{display:none!important;}',
+    /* Do NOT force .hide to display:none with !important. The firmware unhides
+     * #statusContent -- the wrapper holding Internet Connection, Wireless and
+     * Statistics -- with an INLINE style while leaving the .hide class on it, so
+     * an !important rule here wins and suppresses the entire stock status block.
+     * Keeping .pinSection out of the section styling below is enough to stop the
+     * PIN panel appearing, without fighting the framework's own show/hide. */
+    '.statusPage>#statusContent{margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
     'a.icon-help,.icon-help{border:0!important;background:transparent!important;padding:0!important;margin:0!important;}',
     /* Bootstrap components used across Advanced/Wizard/SMS -- force dark so no
      * light-on-light text remains anywhere ("consider all objects"). */
@@ -151,6 +157,10 @@
     '.sigmod-key .kt{font-size:13px;color:#e6edf3!important;overflow-wrap:break-word;}',
     '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:break-word;font-family:monospace;}',
     '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
+    '.sigmod-tile{cursor:grab;}',
+    '.sigmod-tile:active{cursor:grabbing;}',
+    '.sigmod-drag{opacity:.35;}',
+    '.sigmod-over{outline:2px dashed #38bdf8!important;outline-offset:2px;}',
     '.sigmod-spark{margin-top:12px;padding-top:10px;border-top:1px solid #2a313b;}',
     '.sigmod-spark .sk{font-size:10px;color:#9aa4b2!important;margin-bottom:4px;}',
     '.sigmod-spark .sk:last-child{margin:4px 0 0;}',
@@ -379,6 +389,7 @@
         '<span class="sigmod-btn" id="btnTelnet">' + svg('usb', 16) +
           'Telnet <span class="sigmod-pill" id="pillTelnet">--</span></span>' +
         '<span class="sigmod-btn danger" id="btnReboot">' + svg('reboot', 16) + 'Reboot</span>' +
+        '<span class="sigmod-btn" id="btnResetTiles">' + svg('advanced', 16) + 'Reset layout</span>' +
       '</div>' +
       '<div class="content-label" style="margin-top:8px;font-size:11px;">' +
         'TTL-fix pins outgoing TTL to 65 (helps tethering on SMARTY/Three). ' +
@@ -404,6 +415,8 @@
         stat('usb', 'IMSI', 'abImsi') +
         stat('sms', 'SIM Number', 'abSim') +
         stat('globe', 'MAC', 'abMac') +
+        stat('usb', 'ICCID', 'abIccid') +
+        stat('signal', 'Carrier (SPN)', 'abSpn') +
       '</div>';
 
     var sec = document.createElement('div');
@@ -423,13 +436,8 @@
     // Our cards live in a container we own, so the grid can never interfere with
     // however the firmware chooses to lay out its own sections.
     if (host.className.indexOf('statusPage') >= 0) {
-      // Same flow as the stock sections. Security and About Device are stacked
-      // in one cell so the pair fills the column rather than leaving a gap.
-      var col = document.createElement('div');
-      col.className = 'sigmod-col';
-      col.id = 'sigmodSecCol';
-      col.appendChild(sec); col.appendChild(about);
-      host.appendChild(sys); host.appendChild(ctl); host.appendChild(col);
+      host.appendChild(sys); host.appendChild(ctl);
+      host.appendChild(sec); host.appendChild(about);
     } else {
       var wrap = document.createElement('div');
       wrap.className = 'sigmod-cards';
@@ -439,6 +447,7 @@
       host.appendChild(wrap);
     }
     wireControls();
+    var rt = document.getElementById('btnResetTiles'); if (rt) rt.onclick = resetTileOrder;
     var ak = document.getElementById('btnAddKey');   if (ak) ak.onclick = addKey;
     var cp = document.getElementById('btnChangePw'); if (cp) cp.onclick = changePw;
     refreshCtlState();
@@ -745,6 +754,8 @@
       return last.cellid + ' (eNB ' + Math.floor(n / 256) + '.' + (n % 256) + ')';
     })());
     set('spTac', last.tac || '—');
+    set('abIccid', last.iccid || '—');
+    set('abSpn', last.spn || '—');
   }
 
   /* ==================================================================== *
@@ -758,16 +769,169 @@
     } catch (e) {}
   }
 
+
+  /* ==================================================================== *
+   * Drag-and-drop tile arrangement                                       *
+   *                                                                      *
+   * The firmware rebuilds its own DOM, and it keeps the stock sections in
+   * a #statusContent wrapper while the mod's cards sit directly under
+   * .statusPage. To reorder freely they all have to share one flow, so the
+   * stock sections are REPARENTED next to ours. Reparenting preserves the
+   * nodes and their ids, so the firmware's own updates keep landing; we
+   * never recreate or copy its elements. Everything here is idempotent and
+   * re-applied on each tick, because a firmware re-render undoes it.
+   * ==================================================================== */
+  var TILES = [
+    { k: 'conn',   sel: '.connectionSection' },
+    { k: 'wifi',   sel: '.wifiSection' },
+    { k: 'stats',  sel: '.statisticSection' },
+    { k: 'system', sel: '#sigmodPanel' },
+    { k: 'ctl',    sel: '#sigmodCtl' },
+    { k: 'sec',    sel: '#sigmodSec' },
+    { k: 'about',  sel: '#sigmodAbout' }
+  ];
+  var ORDER_KEY = 'sigmodTileOrder';
+
+  // The order lives on the ROUTER, so the layout follows the device rather than
+  // whichever browser last touched it. localStorage is kept only as a cache, so
+  // the page can arrange itself immediately on load instead of waiting for the
+  // fetch, and as a fallback if the device write is refused.
+  var serverOrder = null;
+
+  function savedOrder() {
+    if (serverOrder && serverOrder.length) return serverOrder;
+    try {
+      var v = JSON.parse(localStorage.getItem(ORDER_KEY));
+      return (v && v.length) ? v : null;
+    } catch (e) { return null; }
+  }
+
+  function loadOrderFromDevice() {
+    var x = new XMLHttpRequest();
+    x.onload = function () {
+      try {
+        var d = JSON.parse(x.responseText);
+        if (d && d.order) {
+          var arr = d.order.split(',');
+          if (arr.length) {
+            serverOrder = arr;
+            try { localStorage.setItem(ORDER_KEY, JSON.stringify(arr)); } catch (e) {}
+            arrangeTiles();
+          }
+        }
+      } catch (e) {}
+    };
+    x.open('GET', CGI_TILES + '?t=' + (new Date()).getTime(), true);
+    x.send();
+  }
+
+  function saveOrder(keys) {
+    serverOrder = keys;
+    try { localStorage.setItem(ORDER_KEY, JSON.stringify(keys)); } catch (e) {}
+    // Writing is password-gated like every other mutation. api() reuses the
+    // stored password and prompts once if it does not have one yet.
+    api('POST', CGI_TILES, keys.join(','), function (d, st) {
+      if (st === 503) window.alert('Layout not saved to the router: set a control password first (/etc/signalmod.pw).');
+      else if (d && d.error) window.alert('Layout not saved: ' + d.error);
+    });
+  }
+  function tileEl(t) { try { return document.querySelector(t.sel); } catch (e) { return null; } }
+
+  function currentOrder(host) {
+    var out = [];
+    for (var i = 0; i < host.children.length; i++) {
+      var k = host.children[i].getAttribute && host.children[i].getAttribute('data-tile');
+      if (k) out.push(k);
+    }
+    return out;
+  }
+
+  function arrangeTiles() {
+    var host = document.querySelector('.statusPage');
+    if (!host) return;
+    var want = savedOrder() || TILES.map(function (t) { return t.k; });
+    TILES.forEach(function (t) { if (want.indexOf(t.k) < 0) want.push(t.k); });
+
+    // Resolve to the tiles that actually exist right now.
+    var live = [];
+    want.forEach(function (k) {
+      for (var i = 0; i < TILES.length; i++) {
+        if (TILES[i].k !== k) continue;
+        var el = tileEl(TILES[i]);
+        if (el) live.push({ k: k, el: el });
+      }
+    });
+    if (!live.length) return;
+
+    // Only touch the DOM when something is actually out of place. Rearranging
+    // on every tick would fight the user mid-drag and flicker the page.
+    var ok = true;
+    for (var i = 0; i < live.length; i++) {
+      if (live[i].el.parentNode !== host) { ok = false; break; }
+    }
+    if (ok && currentOrder(host).join(',') !== live.map(function (x) { return x.k; }).join(',')) ok = false;
+    if (ok) return;
+
+    live.forEach(function (x) {
+      if (!x.el.getAttribute('data-tile')) { x.el.setAttribute('data-tile', x.k); wireTile(x.el); }
+      host.appendChild(x.el);   // appendChild moves an existing node
+    });
+  }
+
+  var dragKey = null;
+  function wireTile(el) {
+    el.setAttribute('draggable', 'true');
+    el.classList.add('sigmod-tile');
+    el.addEventListener('dragstart', function (e) {
+      dragKey = el.getAttribute('data-tile');
+      el.classList.add('sigmod-drag');
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragKey); } catch (x) {}
+    }, false);
+    el.addEventListener('dragend', function () {
+      dragKey = null;
+      el.classList.remove('sigmod-drag');
+      var host = document.querySelector('.statusPage');
+      var tiles = host ? host.querySelectorAll('.sigmod-over') : [];
+      for (var i = 0; i < tiles.length; i++) tiles[i].classList.remove('sigmod-over');
+      if (host) saveOrder(currentOrder(host));
+    }, false);
+    el.addEventListener('dragover', function (e) {
+      if (!dragKey || el.getAttribute('data-tile') === dragKey) return;
+      e.preventDefault();
+      el.classList.add('sigmod-over');
+      var host = el.parentNode;
+      var src = host.querySelector('[data-tile="' + dragKey + '"]');
+      if (!src || src === el) return;
+      // insert before or after depending on which half of the tile we are over
+      var r = el.getBoundingClientRect();
+      var after = (e.clientY - r.top) > r.height / 2;
+      host.insertBefore(src, after ? el.nextSibling : el);
+    }, false);
+    el.addEventListener('dragleave', function () { el.classList.remove('sigmod-over'); }, false);
+    el.addEventListener('drop', function (e) { e.preventDefault(); el.classList.remove('sigmod-over'); }, false);
+  }
+
+  function resetTileOrder() {
+    serverOrder = null;
+    try { localStorage.removeItem(ORDER_KEY); } catch (e) {}
+    api('POST', CGI_TILES, TILES.map(function (t) { return t.k; }).join(','), function () {});
+    var host = document.querySelector('.statusPage');
+    if (!host) return;
+    TILES.forEach(function (t) { var el = tileEl(t); if (el) host.appendChild(el); });
+  }
+
   function tick() {
     try { ensureDarkTheme(); } catch (e) {}
     try { ensureBranding(); } catch (e) {}
     try { ensureIcons(); } catch (e) {}
     try { injectSignalRows(); } catch (e) {}
     try { injectPanels(); } catch (e) {}
+    try { arrangeTiles(); } catch (e) {}
     try { fetchSignal(); } catch (e) {}
   }
 
   ensureDarkTheme();
+  loadOrderFromDevice();
   setInterval(tick, 1500);
   // Refresh control/system state a bit less often than signal.
   setInterval(function () { if (document.getElementById('sigmodPanel')) refreshCtlState(); }, 6000);

@@ -1,1 +1,1 @@
-{"rsrp":"-84","rsrq":"-9","rssi":"-61","sinr":"12.4","earfcn":"1617","band":"3","csq":"31","dl_kbps":"48210.5","ul_kbps":"9120.2","latency_ms":"31.7","uptime":"184230","mode":"LTE","tac":"1A2B","cellid":"01A3C407"}
+{"rsrp":"-84","rsrq":"-9","rssi":"-61","sinr":"12.4","earfcn":"1617","band":"3","csq":"31","dl_kbps":"48210.5","ul_kbps":"9120.2","latency_ms":"31.7","uptime":"184230","mode":"LTE","tac":"1A2B","cellid":"01A3C407","iccid":"8944000000000000000","spn":"MOCKNET"}

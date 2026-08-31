@@ -2,6 +2,22 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.5.1] — 2026-08-31
+
+### Changed
+- **Cards resize by dragging a corner grip**, replacing the button that cycled
+  one/two/full width. Dragging sets both dimensions at once: horizontally it
+  snaps to grid columns, vertically it sets a minimum height. Implemented with
+  pointer events rather than HTML5 drag, so it works by touch too, and the
+  card's reorder drag is disabled mid-resize so the two gestures cannot fight.
+- The saved layout format gains an optional height (`name:width:height`).
+  Layouts written by 2.5.0 still load.
+
+### Fixed
+- Restored three layout-persistence functions that were removed while replacing
+  the sizing code, which left the page throwing `loadOrderFromDevice is not
+  defined` and arranging no tiles at all.
+
 ## [2.5.0] — 2026-08-31  ·  **customisable dashboard**
 
 ### Added

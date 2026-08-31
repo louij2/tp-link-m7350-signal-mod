@@ -2,7 +2,7 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
-## [Unreleased]
+## [2.4.0] — 2026-08-31  ·  **arrangeable dashboard**
 
 ### Fixed
 - **The firmware's own status cards had stopped appearing.** They live inside

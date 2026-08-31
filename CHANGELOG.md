@@ -2,6 +2,24 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.5.0] — 2026-08-31  ·  **customisable dashboard**
+
+### Added
+- **Resizable cards.** Every card carries a size control that cycles one column,
+  two columns, full width. The Status tab is now a real CSS grid with dense flow,
+  so resized cards form proper rows. Every card's contents is an auto-fill grid,
+  so it genuinely reflows to the width rather than just stretching: the System
+  card goes from two inner columns at 1x to nine at full width.
+- **Hardware card**: CPU utilisation, load average, RAM, swap, free space on `/`
+  and `/usr`, SD-card slot state and temperature. It is the eighth draggable and
+  resizable tile.
+  - CPU is real utilisation, not load: `/proc/stat` is cumulative, so the
+    previous sample is kept in tmpfs and the delta since the last poll reported.
+  - The SD slot is reported honestly. `/sys/class/mmc_host/mmc0` exists with no
+    card in it, so it shows `empty` rather than pretending the feature is absent,
+    and shows free space and mount point once a card is present.
+- Card widths persist on the router alongside the order, as `name:width`.
+
 ## [2.4.0] — 2026-08-31  ·  **arrangeable dashboard**
 
 ### Fixed

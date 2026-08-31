@@ -158,12 +158,13 @@
     '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:break-word;font-family:monospace;}',
     '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
     '.sigmod-tile{cursor:grab;}',
-    '.sigmod-w2{grid-column:span 2!important;}',
-    '.sigmod-wfull{grid-column:1/-1!important;}',
-    '@media(max-width:700px){.sigmod-w2,.sigmod-wfull{grid-column:auto!important;}}',
-    '.sigmod-size{position:absolute;top:8px;right:10px;z-index:5;font-size:10px;line-height:1;padding:3px 7px;border-radius:999px;border:1px solid #2a313b;background:#1d232c!important;color:#9aa4b2!important;cursor:pointer;user-select:none;opacity:0;transition:opacity .12s;}',
-    '.sigmod-tile:hover .sigmod-size{opacity:1;}',
-    '.sigmod-size:hover{color:#7dd3fc!important;border-color:#3a4552;}',
+    '@media(max-width:700px){.statusPage>*{grid-column:auto!important;}}',
+    '.sigmod-grip{position:absolute;right:2px;bottom:2px;width:16px;height:16px;cursor:nwse-resize;opacity:0;transition:opacity .12s;z-index:6;}',
+    '.sigmod-grip:before{content:"";position:absolute;right:3px;bottom:3px;width:8px;height:8px;border-right:2px solid #4b5563;border-bottom:2px solid #4b5563;}',
+    '.sigmod-tile:hover .sigmod-grip{opacity:1;}',
+    '.sigmod-grip:hover:before{border-color:#38bdf8;}',
+    '.sigmod-resizing{outline:1px solid #38bdf8!important;user-select:none;}',
+
     '.sigmod-tile:active{cursor:grabbing;}',
     '.sigmod-drag{opacity:.35;}',
     '.sigmod-over{outline:2px dashed #38bdf8!important;outline-offset:2px;}',
@@ -828,19 +829,29 @@
     { k: 'about',  sel: '#sigmodAbout' }
   ];
   var ORDER_KEY = 'sigmodTileOrder';
-  var WIDTHS = ['1', '2', 'full'];
-  var tileWidth = {};                       // key -> '1' | '2' | 'full'
+  var tileW = {};   // key -> column span (integer)
+  var tileH = {};   // key -> pixel min-height, or undefined for automatic
 
-  function applyWidth(el, w) {
-    el.classList.remove('sigmod-w2', 'sigmod-wfull');
-    if (w === '2') el.classList.add('sigmod-w2');
-    else if (w === 'full') el.classList.add('sigmod-wfull');
+  function gridInfo(host) {
+    var cs = getComputedStyle(host);
+    var tracks = cs.gridTemplateColumns.split(' ').filter(function (x) { return x; });
+    var gap = parseFloat(cs.columnGap) || 12;
+    var tw = tracks.length ? parseFloat(tracks[0]) : 300;
+    return { n: tracks.length || 1, gap: gap, tw: tw };
+  }
+
+  function applySize(el, k) {
+    var w = tileW[k], h = tileH[k];
+    el.style.gridColumn = (w && w > 1) ? ('span ' + w) : '';
+    el.style.minHeight = h ? (h + 'px') : '';
   }
 
   function encodeLayout(keys) {
     return keys.map(function (k) {
-      var w = tileWidth[k] || '1';
-      return w === '1' ? k : (k + ':' + w);
+      var w = tileW[k] || 1, h = tileH[k];
+      if (h) return k + ':' + w + ':' + h;
+      if (w > 1) return k + ':' + w;
+      return k;
     }).join(',');
   }
 
@@ -848,39 +859,65 @@
     var keys = [];
     (str || '').split(',').forEach(function (part) {
       if (!part) return;
-      var bits = part.split(':');
-      keys.push(bits[0]);
-      if (bits[1] && WIDTHS.indexOf(bits[1]) >= 0) tileWidth[bits[0]] = bits[1];
+      var b = part.split(':');
+      keys.push(b[0]);
+      if (b[1]) { var w = parseInt(b[1], 10); if (w >= 1 && w <= 9) tileW[b[0]] = w; }
+      if (b[2]) { var h = parseInt(b[2], 10); if (h >= 80 && h <= 4000) tileH[b[0]] = h; }
     });
     return keys;
   }
 
-  // A resize control per card: cycles one column -> two -> full width. The
-  // content inside every card is an auto-fill grid, so it reflows to whatever
-  // width the card ends up with; nothing needs to know its own size.
-  function addSizer(el, key) {
-    if (el.querySelector('.sigmod-size')) return;
-    var b = document.createElement('span');
-    b.className = 'sigmod-size';
-    b.setAttribute('draggable', 'false');
-    var label = function () { var w = tileWidth[key] || '1'; b.textContent = w === 'full' ? 'FULL' : (w + '\u00d7'); };
-    label();
-    b.onclick = function (e) {
+  // A grip in the bottom-right corner. Dragging it sets how many grid columns
+  // the card spans and its minimum height. Pointer events rather than HTML5
+  // drag, so it also works by touch, and the card's own drag is disabled while
+  // resizing so the two gestures cannot fight.
+  function addGrip(el, key) {
+    if (el.querySelector('.sigmod-grip')) return;
+    var g = document.createElement('span');
+    g.className = 'sigmod-grip';
+    g.title = 'Drag to resize';
+    g.setAttribute('draggable', 'false');
+    el.appendChild(g);
+
+    var host = null, info = null, startH = 0;
+    function move(e) {
+      if (!host) return;
+      var r = el.getBoundingClientRect();
+      var want = Math.round((e.clientX - r.left + info.gap) / (info.tw + info.gap));
+      if (want < 1) want = 1;
+      if (want > info.n) want = info.n;
+      tileW[key] = want;
+      var h = Math.round(e.clientY - r.top);
+      tileH[key] = (h > 120) ? h : undefined;
+      applySize(el, key);
+      e.preventDefault();
+    }
+    function up() {
+      if (!host) return;
+      document.removeEventListener('pointermove', move, true);
+      document.removeEventListener('pointerup', up, true);
+      el.setAttribute('draggable', 'true');
+      el.classList.remove('sigmod-resizing');
+      saveOrder(currentOrder(host));
+      host = null;
+    }
+    g.addEventListener('pointerdown', function (e) {
+      host = document.querySelector('.statusPage');
+      if (!host) return;
+      info = gridInfo(host);
+      startH = el.getBoundingClientRect().height;
+      el.setAttribute('draggable', 'false');   // stop the reorder drag firing
+      el.classList.add('sigmod-resizing');
+      document.addEventListener('pointermove', move, true);
+      document.addEventListener('pointerup', up, true);
+      e.preventDefault();
       e.stopPropagation();
-      var w = tileWidth[key] || '1';
-      tileWidth[key] = WIDTHS[(WIDTHS.indexOf(w) + 1) % WIDTHS.length];
-      applyWidth(el, tileWidth[key]);
-      label();
-      var host = document.querySelector('.statusPage');
-      if (host) saveOrder(currentOrder(host));
-    };
-    el.appendChild(b);
+    }, false);
   }
 
-  // The order lives on the ROUTER, so the layout follows the device rather than
-  // whichever browser last touched it. localStorage is kept only as a cache, so
-  // the page can arrange itself immediately on load instead of waiting for the
-  // fetch, and as a fallback if the device write is refused.
+  // The layout lives on the ROUTER, so it follows the device rather than
+  // whichever browser last touched it. localStorage is a cache only, so the page
+  // can arrange itself immediately instead of flashing the default order.
   var serverOrder = null;
 
   function savedOrder() {
@@ -913,13 +950,12 @@
   function saveOrder(keys) {
     serverOrder = keys;
     try { localStorage.setItem(ORDER_KEY, JSON.stringify(keys)); } catch (e) {}
-    // Writing is password-gated like every other mutation. api() reuses the
-    // stored password and prompts once if it does not have one yet.
     api('POST', CGI_TILES, encodeLayout(keys), function (d, st) {
       if (st === 503) window.alert('Layout not saved to the router: set a control password first (/etc/signalmod.pw).');
       else if (d && d.error) window.alert('Layout not saved: ' + d.error);
     });
   }
+
   function tileEl(t) { try { return document.querySelector(t.sel); } catch (e) { return null; } }
 
   function currentOrder(host) {
@@ -956,14 +992,14 @@
     }
     if (ok && currentOrder(host).join(',') !== live.map(function (x) { return x.k; }).join(',')) ok = false;
     if (ok) {
-      live.forEach(function (x) { addSizer(x.el, x.k); applyWidth(x.el, tileWidth[x.k] || '1'); });
+      live.forEach(function (x) { addGrip(x.el, x.k); applySize(x.el, x.k); });
       return;
     }
 
     live.forEach(function (x) {
       if (!x.el.getAttribute('data-tile')) { x.el.setAttribute('data-tile', x.k); wireTile(x.el); }
-      addSizer(x.el, x.k);
-      applyWidth(x.el, tileWidth[x.k] || '1');
+      addGrip(x.el, x.k);
+      applySize(x.el, x.k);
       host.appendChild(x.el);   // appendChild moves an existing node
     });
   }
@@ -1004,8 +1040,8 @@
   function resetTileOrder() {
     serverOrder = null;
     try { localStorage.removeItem(ORDER_KEY); } catch (e) {}
-    tileWidth = {};
-    TILES.forEach(function (t) { var el = tileEl(t); if (el) applyWidth(el, '1'); });
+    tileW = {}; tileH = {};
+    TILES.forEach(function (t) { var el = tileEl(t); if (el) { el.style.gridColumn = ''; el.style.minHeight = ''; } });
     api('POST', CGI_TILES, TILES.map(function (t) { return t.k; }).join(','), function () {});
     var host = document.querySelector('.statusPage');
     if (!host) return;

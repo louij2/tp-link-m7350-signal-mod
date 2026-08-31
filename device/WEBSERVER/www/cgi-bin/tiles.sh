@@ -29,7 +29,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   BODY=$(dd bs=1 count="$len" 2>/dev/null | tr -d '\r\n ')
   # Only a comma-separated list of known tile names is accepted.
   # name[:width] where width is 1, 2 or full
-  T='(conn|wifi|stats|system|ctl|sec|about|hw)(:(1|2|full))?'
+  T='(conn|wifi|stats|system|ctl|sec|about|hw)(:[1-9])?(:[0-9]{2,4})?'
   if ! echo "$BODY" | grep -qE "^${T}(,${T})*$"; then
     printf "${J}\r\n{\"error\":\"rejected: unknown tile name\"}"; exit 0
   fi

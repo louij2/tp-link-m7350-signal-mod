@@ -55,9 +55,9 @@
      * and floated labels. Every one of those has to be undone explicitly or the
      * container keeps its 630px whether or not anything is in it -- which is
      * what produced a tall empty band above the cards. */
-    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:block!important;column-width:330px!important;column-gap:12px!important;}',
+    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;grid-auto-flow:row dense!important;gap:12px!important;align-items:start!important;}',
     '.statusPage .sigmod-card{margin:0 0 12px!important;width:auto!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
-    '.statusPage .pinSection,.statusPage .connectionSection,.statusPage .wifiSection,.statusPage .statisticSection,.statusPage .simSection,.statusPage .dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0 0 12px!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
+    '.statusPage .pinSection,.statusPage .connectionSection,.statusPage .wifiSection,.statusPage .statisticSection,.statusPage .simSection,.statusPage .dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0!important;height:auto!important;box-sizing:border-box!important;position:relative!important;}',
     '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;min-width:0!important;overflow-wrap:break-word!important;}',
     '.statusPage .content-group>.content-label{float:none!important;width:auto!important;margin-right:0!important;}',
     '.statusPage .content-group>label{white-space:normal!important;min-width:0!important;overflow-wrap:break-word!important;}',
@@ -97,7 +97,7 @@
      * an !important rule here wins and suppresses the entire stock status block.
      * Keeping .pinSection out of the section styling below is enough to stop the
      * PIN panel appearing, without fighting the framework's own show/hide. */
-    '.statusPage>#statusContent{margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;}',
+    '.statusPage>#statusContent{display:none!important;}',
     'a.icon-help,.icon-help{border:0!important;background:transparent!important;padding:0!important;margin:0!important;}',
     /* Bootstrap components used across Advanced/Wizard/SMS -- force dark so no
      * light-on-light text remains anywhere ("consider all objects"). */
@@ -158,6 +158,12 @@
     '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:break-word;font-family:monospace;}',
     '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
     '.sigmod-tile{cursor:grab;}',
+    '.sigmod-w2{grid-column:span 2!important;}',
+    '.sigmod-wfull{grid-column:1/-1!important;}',
+    '@media(max-width:700px){.sigmod-w2,.sigmod-wfull{grid-column:auto!important;}}',
+    '.sigmod-size{position:absolute;top:8px;right:10px;z-index:5;font-size:10px;line-height:1;padding:3px 7px;border-radius:999px;border:1px solid #2a313b;background:#1d232c!important;color:#9aa4b2!important;cursor:pointer;user-select:none;opacity:0;transition:opacity .12s;}',
+    '.sigmod-tile:hover .sigmod-size{opacity:1;}',
+    '.sigmod-size:hover{color:#7dd3fc!important;border-color:#3a4552;}',
     '.sigmod-tile:active{cursor:grabbing;}',
     '.sigmod-drag{opacity:.35;}',
     '.sigmod-over{outline:2px dashed #38bdf8!important;outline-offset:2px;}',
@@ -419,6 +425,22 @@
         stat('signal', 'Carrier (SPN)', 'abSpn') +
       '</div>';
 
+    var hw = document.createElement('div');
+    hw.className = 'sigmod-card';
+    hw.id = 'sigmodHw';
+    hw.innerHTML =
+      '<h3>' + svg('chip', 15) + 'Hardware</h3>' +
+      '<div class="sigmod-grid">' +
+        stat('advanced', 'CPU', 'hwCpu') +
+        stat('chip', 'Load', 'hwLoad') +
+        stat('chip', 'RAM', 'hwRam') +
+        stat('usb', 'Swap', 'hwSwap') +
+        stat('advanced', 'Storage /', 'hwRoot') +
+        stat('advanced', 'Storage /usr', 'hwUsr') +
+        stat('usb', 'SD card', 'hwSd') +
+        stat('thermo', 'Temp', 'hwTemp') +
+      '</div>';
+
     var sec = document.createElement('div');
     sec.className = 'sigmod-card';
     sec.id = 'sigmodSec';
@@ -436,13 +458,13 @@
     // Our cards live in a container we own, so the grid can never interfere with
     // however the firmware chooses to lay out its own sections.
     if (host.className.indexOf('statusPage') >= 0) {
-      host.appendChild(sys); host.appendChild(ctl);
+      host.appendChild(sys); host.appendChild(ctl); host.appendChild(hw);
       host.appendChild(sec); host.appendChild(about);
     } else {
       var wrap = document.createElement('div');
       wrap.className = 'sigmod-cards';
       wrap.id = 'sigmodCards';
-      wrap.appendChild(sys); wrap.appendChild(ctl);
+      wrap.appendChild(sys); wrap.appendChild(ctl); wrap.appendChild(hw);
       wrap.appendChild(sec); wrap.appendChild(about);
       host.appendChild(wrap);
     }
@@ -527,6 +549,20 @@
         var t = document.getElementById('spTemp'); if (t && d.temp) t.textContent = d.temp + ' °C';
         var bt = document.getElementById('spBatt');
         if (bt && d.battery) bt.textContent = d.battery + '%' + (d.charging === '1' ? ' ⚡' : '');
+
+        var mb = function (kb) { var n = parseFloat(kb); return isNaN(n) ? null : (n / 1024); };
+        var setx = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+        setx('hwCpu',  d.cpu ? d.cpu + '%' : '—');
+        setx('hwLoad', d.load || '—');
+        var mt = mb(d.memtotal), mf = mb(d.memfree);
+        setx('hwRam',  (mt && mf !== null) ? (Math.round(mt - mf) + ' / ' + Math.round(mt) + ' MB') : '—');
+        var st = mb(d.swaptotal), sf = mb(d.swapfree);
+        setx('hwSwap', (st && sf !== null) ? (Math.round(st - sf) + ' / ' + Math.round(st) + ' MB') : '—');
+        var rf = mb(d.rootfree), uf = mb(d.usrfree);
+        setx('hwRoot', rf !== null ? (rf.toFixed(1) + ' MB free' + (d.rootpct ? ' · ' + d.rootpct + '%' : '')) : '—');
+        setx('hwUsr',  uf !== null ? (uf.toFixed(1) + ' MB free' + (d.usrpct ? ' · ' + d.usrpct + '%' : '')) : '—');
+        setx('hwSd',   d.sd || '—');
+        setx('hwTemp', d.temp ? d.temp + ' °C' : '—');
       } catch (e) {}
     };
     x.open('GET', CGI_SYS + '?t=' + (new Date()).getTime(), true);
@@ -787,10 +823,59 @@
     { k: 'stats',  sel: '.statisticSection' },
     { k: 'system', sel: '#sigmodPanel' },
     { k: 'ctl',    sel: '#sigmodCtl' },
+    { k: 'hw',     sel: '#sigmodHw' },
     { k: 'sec',    sel: '#sigmodSec' },
     { k: 'about',  sel: '#sigmodAbout' }
   ];
   var ORDER_KEY = 'sigmodTileOrder';
+  var WIDTHS = ['1', '2', 'full'];
+  var tileWidth = {};                       // key -> '1' | '2' | 'full'
+
+  function applyWidth(el, w) {
+    el.classList.remove('sigmod-w2', 'sigmod-wfull');
+    if (w === '2') el.classList.add('sigmod-w2');
+    else if (w === 'full') el.classList.add('sigmod-wfull');
+  }
+
+  function encodeLayout(keys) {
+    return keys.map(function (k) {
+      var w = tileWidth[k] || '1';
+      return w === '1' ? k : (k + ':' + w);
+    }).join(',');
+  }
+
+  function decodeLayout(str) {
+    var keys = [];
+    (str || '').split(',').forEach(function (part) {
+      if (!part) return;
+      var bits = part.split(':');
+      keys.push(bits[0]);
+      if (bits[1] && WIDTHS.indexOf(bits[1]) >= 0) tileWidth[bits[0]] = bits[1];
+    });
+    return keys;
+  }
+
+  // A resize control per card: cycles one column -> two -> full width. The
+  // content inside every card is an auto-fill grid, so it reflows to whatever
+  // width the card ends up with; nothing needs to know its own size.
+  function addSizer(el, key) {
+    if (el.querySelector('.sigmod-size')) return;
+    var b = document.createElement('span');
+    b.className = 'sigmod-size';
+    b.setAttribute('draggable', 'false');
+    var label = function () { var w = tileWidth[key] || '1'; b.textContent = w === 'full' ? 'FULL' : (w + '\u00d7'); };
+    label();
+    b.onclick = function (e) {
+      e.stopPropagation();
+      var w = tileWidth[key] || '1';
+      tileWidth[key] = WIDTHS[(WIDTHS.indexOf(w) + 1) % WIDTHS.length];
+      applyWidth(el, tileWidth[key]);
+      label();
+      var host = document.querySelector('.statusPage');
+      if (host) saveOrder(currentOrder(host));
+    };
+    el.appendChild(b);
+  }
 
   // The order lives on the ROUTER, so the layout follows the device rather than
   // whichever browser last touched it. localStorage is kept only as a cache, so
@@ -812,7 +897,7 @@
       try {
         var d = JSON.parse(x.responseText);
         if (d && d.order) {
-          var arr = d.order.split(',');
+          var arr = decodeLayout(d.order);
           if (arr.length) {
             serverOrder = arr;
             try { localStorage.setItem(ORDER_KEY, JSON.stringify(arr)); } catch (e) {}
@@ -830,7 +915,7 @@
     try { localStorage.setItem(ORDER_KEY, JSON.stringify(keys)); } catch (e) {}
     // Writing is password-gated like every other mutation. api() reuses the
     // stored password and prompts once if it does not have one yet.
-    api('POST', CGI_TILES, keys.join(','), function (d, st) {
+    api('POST', CGI_TILES, encodeLayout(keys), function (d, st) {
       if (st === 503) window.alert('Layout not saved to the router: set a control password first (/etc/signalmod.pw).');
       else if (d && d.error) window.alert('Layout not saved: ' + d.error);
     });
@@ -870,10 +955,15 @@
       if (live[i].el.parentNode !== host) { ok = false; break; }
     }
     if (ok && currentOrder(host).join(',') !== live.map(function (x) { return x.k; }).join(',')) ok = false;
-    if (ok) return;
+    if (ok) {
+      live.forEach(function (x) { addSizer(x.el, x.k); applyWidth(x.el, tileWidth[x.k] || '1'); });
+      return;
+    }
 
     live.forEach(function (x) {
       if (!x.el.getAttribute('data-tile')) { x.el.setAttribute('data-tile', x.k); wireTile(x.el); }
+      addSizer(x.el, x.k);
+      applyWidth(x.el, tileWidth[x.k] || '1');
       host.appendChild(x.el);   // appendChild moves an existing node
     });
   }
@@ -914,6 +1004,8 @@
   function resetTileOrder() {
     serverOrder = null;
     try { localStorage.removeItem(ORDER_KEY); } catch (e) {}
+    tileWidth = {};
+    TILES.forEach(function (t) { var el = tileEl(t); if (el) applyWidth(el, '1'); });
     api('POST', CGI_TILES, TILES.map(function (t) { return t.k; }).join(','), function () {});
     var host = document.querySelector('.statusPage');
     if (!host) return;

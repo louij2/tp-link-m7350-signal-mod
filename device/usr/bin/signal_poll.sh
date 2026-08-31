@@ -108,6 +108,42 @@ CELL_FAILS=0
 HIST=/tmp/signal_hist
 HIST_MAX=240          # 240 samples at 60s = 4 hours of sparkline
 
+
+# SIM identity: ICCID and the Service Provider Name, read from the card itself
+# rather than derived from MCC/MNC. This is what identifies WHICH eSIM profile is
+# currently enabled on a removable eUICC, so it changes when you switch profiles.
+# AT+CRSM is the only SIM-access command this modem supports (CSIM/CCHO/CGLA all
+# return errors), but it is enough for both of these.
+SIM_CH=""
+sim_read() { # sim_read <dev> <cmd> -> hex payload from +CRSM: 144,0,"...."
+  : > /tmp/crsm.txt
+  ( cat "$1" > /tmp/crsm.txt 2>/dev/null ) & sp=$!
+  sleep 0.2
+  printf '%s\r\n' "$2" > "$1" 2>/dev/null
+  sleep 1.2
+  kill $sp 2>/dev/null; wait $sp 2>/dev/null
+  tr -d '\r' < /tmp/crsm.txt | sed -n 's/.*+CRSM: 144,0,"\([0-9A-Fa-f]*\)".*/\1/p' | head -1
+}
+
+poll_sim() {
+  for c in $CANDIDATES; do
+    [ -c "$c" ] || continue
+    raw=$(sim_read "$c" 'AT+CRSM=176,12258,0,0,10')          # EF_ICCID (2FE2)
+    [ -n "$raw" ] || continue
+    SIM_CH="$c"
+    # ICCID is nibble-swapped BCD with F padding.
+    ICCID=$(printf '%s' "$raw" | sed 's/\(.\)\(.\)/\2\1/g' | tr -d 'Ff')
+    raw=$(sim_read "$c" 'AT+CRSM=176,28486,0,0,17')          # EF_SPN (6F46)
+    if [ -n "$raw" ]; then
+      # first byte is the display-condition byte; text runs until FF padding
+      h=$(printf '%s' "$raw" | cut -c3- | sed 's/[Ff][Ff].*//')
+      [ -n "$h" ] && SPN=$(printf "$(printf '%s' "$h" | sed 's/\(..\)/\\x\1/g')" 2>/dev/null)
+    fi
+    break
+  done
+  return 0
+}
+
 cell_probe() { # cell_probe <dev> -> 0 if it answers +CEREG
   [ -c "$1" ] || return 1
   rm -f /tmp/cereg.txt
@@ -163,7 +199,7 @@ hist_push() { # keep a small rolling RSRP ring in tmpfs for the UI sparkline
 
 PING_TARGET=1.1.1.1
 BAD=""
-TAC=""; CELLID=""; slow=0
+TAC=""; CELLID=""; ICCID=""; SPN=""; slow=0; simtick=0
 select_channel
 empty_streak=0
 prev_rx=""; prev_tx=""; prev_t=""
@@ -239,9 +275,13 @@ while true; do
     slow=0
     poll_cell
     hist_push "$RSRP"
+    # SIM identity barely ever changes, so read it far less often than the rest.
+    # Re-reading at all is what catches an eUICC profile switch or a card swap.
+    simtick=$((simtick + 1))
+    if [ -z "$ICCID" ] || [ "$simtick" -ge 5 ]; then simtick=0; poll_sim; fi
   fi
 
-  printf '{"rsrp":"%s","rsrq":"%s","rssi":"%s","earfcn":"%s","band":"%s","mode":"%s","dl_kbps":"%s","ul_kbps":"%s","latency_ms":"%s","uptime":"%s","rx_bytes":"%s","tx_bytes":"%s","tac":"%s","cellid":"%s"}' \
-    "$RSRP" "$RSRQ" "$RSSI" "$EARFCN" "$BAND" "$MODE" "$DL_KBPS" "$UL_KBPS" "$LAT" "$UPTIME" "$RX" "$TX" "$TAC" "$CELLID" > /tmp/signal.json
+  printf '{"rsrp":"%s","rsrq":"%s","rssi":"%s","earfcn":"%s","band":"%s","mode":"%s","dl_kbps":"%s","ul_kbps":"%s","latency_ms":"%s","uptime":"%s","rx_bytes":"%s","tx_bytes":"%s","tac":"%s","cellid":"%s","iccid":"%s","spn":"%s"}' \
+    "$RSRP" "$RSRQ" "$RSSI" "$EARFCN" "$BAND" "$MODE" "$DL_KBPS" "$UL_KBPS" "$LAT" "$UPTIME" "$RX" "$TX" "$TAC" "$CELLID" "$ICCID" "$SPN" > /tmp/signal.json
   sleep 5
 done

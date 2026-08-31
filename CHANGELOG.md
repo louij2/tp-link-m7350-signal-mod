@@ -2,6 +2,42 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [Unreleased]
+
+### Fixed
+- **The firmware's own status cards had stopped appearing.** They live inside
+  `#statusContent`, which the firmware unhides with an *inline style* while
+  leaving the `hide` class on it. A `.statusPage .hide{display:none!important}`
+  rule, added to stop a SIM PIN panel appearing, outranked that inline style and
+  suppressed the whole stock block. Removed; the PIN panel stays hidden anyway
+  because the section styling already excludes `.hide`.
+- The geometry overrides used `.statusPage > .connectionSection`, but those
+  sections are grandchildren via `#statusContent`, so the child combinator never
+  matched and the firmware's `float:left`, 49.5% widths and fixed heights all
+  survived. Now descendant selectors.
+
+### Added
+- **Drag-and-drop card arrangement** on the Status tab. All seven cards, the
+  firmware's three included, can be reordered by dragging. The stock sections are
+  reparented (moved, never recreated) so everything shares one flow, keeping
+  their nodes and ids so firmware updates still land.
+- **The order is stored on the router**, not the browser, so the layout follows
+  the device. `GET /cgi-bin/tiles.sh` is open since the page needs the order
+  before authenticating and card names are not sensitive; `POST` requires the
+  control password and validates the body against the known tile names, so
+  nothing else can be written. A **Reset layout** button restores the default.
+- **RSRP sparkline**: four hours of signal history in a tmpfs ring, drawn as
+  inline SVG on a fixed -120..-60 dBm scale.
+- **Serving cell**: Cell ID, derived eNodeB and TAC, via `AT+CEREG`.
+- **SIM identity**: ICCID and Carrier (SPN) read from the card with `AT+CRSM`,
+  which is what identifies the active profile on a removable eUICC.
+
+### Documentation
+- README: setting up Multi-WAN failover on a GL.iNet travel router, the GL-MT3000
+  USB 3.0 / 2.4 GHz repeater interference bug, and how removable eUICC cards work
+  with this device (profiles cannot be managed on it; `CSIM`/`CCHO`/`CGLA` all
+  return errors).
+
 ## [2.3.1] — 2026-08-30  ·  **status page actually works on the device**
 
 2.3.0 shipped a status page that was broken on real hardware. It had been

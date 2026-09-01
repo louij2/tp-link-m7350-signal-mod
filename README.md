@@ -153,26 +153,105 @@ What varies between revisions, and what the probe checks:
 
 ## Gaining access (root ADB)
 
-This mod assumes you can already run `adb shell` as root on the device. On the
-M7350v3 that is achieved by switching the **USB composition** so the ADB function
-is exposed:
+Everything in this mod is installed over `adb`, so this is the step that decides
+whether you can use it at all. Work through it in order.
 
+### Step 1 — get the tools
+
+You need Android platform-tools on your computer. That is all.
+
+```bash
+# macOS
+brew install --cask android-platform-tools
+# Debian / Ubuntu
+sudo apt install adb
+# Windows: download the platform-tools zip from developer.android.com
 ```
-usb_composition = 902B   ->   RNDIS + ADB + Mass Storage
+
+### Step 2 — check whether you already have ADB
+
+Plug the M7350 into your computer with a USB cable, turn it on, and run:
+
+```bash
+adb devices
 ```
 
-Once set, `adbd` (already shipped — see `/etc/init.d/adbd`) is reachable and
-`adb shell` lands you as **root** (the device runs services as root; lighttpd
-included).
+**If a device is listed, you are done with this section**; skip to Step 4. Some
+units ship or come back from repair with the debug composition already set, so
+always check before assuming you need to do anything clever.
 
-> **How `usb_composition` is set is firmware/method specific** (community M7350
-> root guides cover the web-UI/diag route for each firmware). This repo does not
-> publish an exploit; it documents everything *after* you have the root shell.
->
-> **Caveat found during this work:** on fw 1.1.3, `persist.usb.config` is empty,
-> so the ADB-enabled composition may **not** persist across a factory-level
-> reset/reflash. The *mod itself* persists fine (it lives on the normal rootfs);
-> re-enabling ADB later is a separate step. Keep a note of how you enabled it.
+If the list is empty, look at what the computer *did* see:
+
+```bash
+# macOS
+system_profiler SPUSBDataType | grep -A4 -i "M7350\|2357"
+# Linux
+lsusb | grep -i "2357\|05c6"
+```
+
+- **`2357:0005`** is the stock composition: RNDIS and mass storage only. **No ADB
+  and no serial port**, which is exactly why there is no clever USB trick to get
+  in. Continue to Step 3.
+- **`05c6:902b`** is the debug composition, so ADB *is* exposed and your problem
+  is drivers or cabling rather than the device. On Windows install a Google USB
+  driver; on any OS try another cable, since plenty are charge-only.
+
+### Step 3 — the part this repo does not provide
+
+Getting your first root shell on a stock M7350 means changing the USB
+composition, and doing that needs a shell: chicken and egg. Breaking that loop
+requires a firmware-specific method, and **this repo does not publish one**.
+
+Community M7350 rooting write-ups exist and are firmware-version specific. Search
+for your exact firmware build, not just "M7350". You are looking for anything
+that gets you command execution on the device: that is all this needs.
+
+If you are not comfortable doing that, this mod is not for you yet, and that is a
+reasonable place to stop.
+
+### Step 4 — make ADB permanent
+
+**Once you have a shell by any means**, this is the part that matters, and it is
+two settings. The device picks its USB composition at boot from UCI:
+
+```sh
+uci set usb.enum.mode=debug
+uci set usb.enum.debug_pid=902B
+uci commit usb
+```
+
+`902B` is RNDIS + ADB + mass storage. `/etc/init.d/adbd` already ships on the
+device and starts at boot (`/etc/rc5.d/S42adbd`), so nothing else is needed.
+
+This lives in `/etc/config/usb` on the persistent rootfs, so **it survives
+reboots**, including the Reboot button in this mod. Verified on fw 1.1.3.
+
+A **factory reset wipes it** and you are back to Step 3, so write down how you
+got in the first time.
+
+Reboot, then confirm from your computer:
+
+```bash
+adb devices          # should now list the device
+adb shell id         # should print uid=0(root)
+```
+
+You land as **root** directly. There is no `adb root` step, because the device
+runs its services as root.
+
+### Step 5 — install the mod, then stop needing ADB
+
+Follow *Install* below. Then, as your first action, build SSH:
+
+```bash
+scripts/build-ssh.sh
+```
+
+That gives you key-only root SSH over the LAN, which is far more pleasant than
+ADB: the USB link re-enumerates constantly and drops commands mid-run, and
+`scripts/deploy.sh` will use SSH automatically whenever the device is not plugged
+in. Once SSH works you can leave the router wherever it lives and never plug it
+into a computer again.
 
 ---
 
@@ -182,6 +261,12 @@ included).
 > it drops files onto the existing rootfs over root ADB and is fully reversible
 > with `scripts/uninstall.sh`. You keep the stock firmware; you just get a better
 > UI and some extra tools on top.
+
+> **If ADB keeps dropping mid-install**, that is normal and not your fault: the
+> USB link re-enumerates constantly on this device, so a long run of commands can
+> lose its connection partway. Re-run the installer; it is safe to run twice
+> (backups are only taken once, and pushes overwrite). If it is persistent, use a
+> different cable or a USB 2.0 port rather than USB 3.0.
 
 ### From a release (recommended)
 

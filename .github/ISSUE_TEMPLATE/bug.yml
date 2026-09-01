@@ -1,0 +1,52 @@
+name: Bug report
+description: Something in the mod misbehaves
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please include the device revision. Almost every bug so far has turned
+        out to be firmware-specific, and "works on mine" is not much help.
+  - type: input
+    id: revision
+    attributes:
+      label: Hardware revision
+      description: From About Device, or the label under the battery
+      placeholder: "M7350(EU) v3.20"
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Mod version
+      description: The Firmware line in About Device, e.g. "Extreme 2.5.1"
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens, and what you expected instead
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: |
+        Whatever applies. A screenshot is ideal for UI problems. For daemon or
+        modem problems these are the useful ones:
+      value: |
+        <!-- Redact IMEI/IMSI/SIM number and your SSID before posting. -->
+
+        cat /tmp/signal.json
+        ls -l /tmp/signal.json   # is the daemon actually still writing?
+        tr -d '\r' < /tmp/at_raw.txt | head -20
+        logread | tail -30
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Before filing
+      options:
+        - label: I hard-refreshed the page (the injected script is cache-busted, but browsers are stubborn)
+        - label: I checked the daemon is running by looking at the mtime of /tmp/signal.json, not by looking for a PID

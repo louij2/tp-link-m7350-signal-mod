@@ -540,7 +540,23 @@ so no daemon is needed.
 
 ---
 
-## Contributing / branching
+## Contributing
+
+**The most useful thing you can send is a probe report from a revision other than
+v3.20 EU.** It needs no installation and changes nothing on the device:
+
+```bash
+git clone https://github.com/louij2/tp-link-m7350-signal-mod
+cd tp-link-m7350-signal-mod && scripts/probe.sh
+```
+
+Open a *Hardware revision report* issue with the output. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for working on the UI without a device (there
+is a mock harness), the house rules, and what tends to go wrong. Planned work is
+in [docs/BACKLOG.md](docs/BACKLOG.md). Security policy and threat model are in
+[SECURITY.md](SECURITY.md).
+
+## Branching
 
 - `main` is the released line; tags (`v2.0.0`, …) mark releases.
 - Do day-to-day work on `dev` (or feature branches off it), then PR into `main`.

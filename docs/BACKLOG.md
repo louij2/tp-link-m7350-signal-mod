@@ -1,0 +1,98 @@
+# Backlog
+
+Roughly ordered by value per unit of effort. Nothing here is committed to; it is
+a list of what looks worth doing next and why.
+
+---
+
+## 1. Get other hardware revisions tested
+
+The single biggest limitation: **everything is verified on one device, a v3.20
+EU.** Until that changes, the project can only honestly claim to work there.
+
+- [ ] Post the recruitment write-up (`docs/drafts/forum-post.md`) to the OpenWrt
+      forum and XDA
+- [ ] Add a **compatibility table** to the README, one row per revision, fed by
+      probe reports. Even two rows changes how the project reads
+- [ ] Have `probe.sh` emit a **paste-ready markdown block** so a reporter does
+      not have to format anything
+- [ ] Label triage: reports arrive as `compatibility`, get closed into the table
+
+## 2. Make contributions safe to accept
+
+Right now a PR could break the device and nothing would catch it.
+
+- [ ] **CI on pull requests**: `shellcheck` over `device/**/*.sh` and `scripts/`,
+      `node --check` over `sigmod.js`. Cheap, and would have caught real bugs
+- [ ] **Headless mock render check**: boot `tools/mock`, assert the invariants
+      that have actually regressed — no overlapping cards, PIN section hidden,
+      no horizontal overflow, every stock row visible. This is the single
+      highest-value test in the project, because all four have broken before
+- [ ] A `scripts/selftest.sh` to run **on a device**: check each CGI responds,
+      that mutating endpoints 403 without a password, and that the daemon's
+      output file is fresh
+- [ ] Enable **Discussions** for "does this work on X" chatter, keeping Issues
+      for actionable things
+
+## 3. Device features worth building
+
+- [ ] **Verify the LTE watchdog backstop.** `bring_up_wwan` is armed but has
+      never been observed firing. Needs a deliberate outage while someone is
+      physically present, since a wrong operation code drops the data call
+- [ ] **Band locking / preference.** The modem is on B3; Three also runs B1 and
+      B20. Worth exposing if the AT command exists — probe first, and never
+      `AT+COPS=?`
+- [ ] **SD card support.** The slot is detected and reports `empty`; once a card
+      is in, show capacity and mount state, and consider it as a home for logs
+      given the rootfs is 87% full
+- [ ] **Signal history beyond 4 hours**, written to SD rather than tmpfs so it
+      survives a reboot
+- [ ] **SMS in the mod UI.** The stock SMS tab exists but is untouched by the
+      theme work
+- [ ] **OLED custom text.** Documented as invasive: `oledd` owns the framebuffer
+      and redraws continuously, so it needs displacing plus a font blitter.
+      Needs someone physically watching the screen
+
+## 4. Dashboard polish
+
+- [ ] **Per-card visibility.** Hide cards you never look at, alongside reorder
+      and resize
+- [ ] **Multiple named layouts**, e.g. "travel" versus "at home"
+- [ ] **Threshold colouring** on RSRP/RSRQ so bad values are obvious at a glance
+- [ ] **Sparklines for throughput and latency**, reusing the existing ring
+- [ ] Make the sparkline's fixed -120..-60 dBm scale **configurable**
+
+## 5. Monitoring and integration
+
+- [ ] Add **cell ID, band and ICCID as Prometheus labels** so Grafana can graph
+      a handover or a profile switch
+- [ ] A ready-made **Grafana dashboard JSON** in `docs/`
+- [ ] **Alert rules** worth shipping: link down, RSRP degraded, telnet or FTP
+      left on, rootfs nearly full
+
+## 6. Housekeeping
+
+- [ ] **Reduce rootfs usage.** 4.8 MB free on `/` is the tightest constraint on
+      the device and will eventually bite
+- [ ] **Uninstall path needs testing on a fresh device**, not just on one that
+      has had every version installed over the top
+- [ ] Document the **release process** in CONTRIBUTING, since it is currently
+      only in the maintainer's head
+- [ ] Consider **signing release bundles**, now that the repo is public
+
+---
+
+## Explicitly not doing
+
+Recorded so they stop being re-proposed. All tested on v3.20:
+
+- **eSIM profile management on-device.** `AT+CSIM`, `AT+CCHO` and `AT+CGLA` all
+  return errors, so there is no APDU path to the ISD-R and no LPA can run.
+  `AT+CRSM` works, which is why ICCID and SPN can still be read
+- **OpenWRT.** `sbl`, `mba`, `tz` and a signed `qdsp` partition, and the data
+  path is proprietary QCMAP over SMD. Even if something booted, the modem would
+  not work
+- **SNMP.** `snmpd` is resident and wants more RAM than the device has free. The
+  Prometheus endpoint covers the same ground for nothing
+- **External antennas.** No connectors on the case, and at RSRP -82 with a flat
+  19.3 Mbps the radio is not the limiting factor anyway

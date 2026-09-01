@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest something the mod should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Worth knowing before you write: this runs on a device with **41 MB of
+        RAM (about 3 MB free), one ARMv7 core at 38 BogoMIPS, and a rootfs 87%
+        full**. Anything resident has to earn its place, and a few obvious ideas
+        are already known to be impossible on this hardware — see below.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: The problem, not the solution. It often has a cheaper answer.
+    validations: { required: true }
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+  - type: dropdown
+    id: cost
+    attributes:
+      label: Does it need anything resident?
+      options:
+        - "No, it reads existing data or runs on demand"
+        - "Yes, it needs a new daemon or service"
+        - "Not sure"
+    validations: { required: true }
+  - type: checkboxes
+    id: known
+    attributes:
+      label: Known non-starters
+      description: These have been tested on v3.20 and ruled out. Tick to confirm yours isn't one.
+      options:
+        - label: "Not eSIM profile management (AT+CSIM, CCHO and CGLA all error — no LPA can run)"
+          required: true
+        - label: "Not OpenWRT (secure boot partitions present, and the LTE stack is proprietary QCMAP over SMD)"
+          required: true
+        - label: "Not SNMP (snmpd wants more RAM than the device has free — Prometheus endpoint exists instead)"
+          required: true

@@ -1,1 +1,18 @@
 blank_issues_enabled: true
+contact_links:
+  - name: Does this work on my revision?
+    url: https://github.com/louij2/tp-link-m7350-signal-mod/discussions
+    about: >
+      Ask in Discussions. If you have the device to hand, running scripts/probe.sh
+      and filing a Hardware revision report is more useful than asking, and takes
+      about a minute.
+  - name: Help, questions and general chat
+    url: https://github.com/louij2/tp-link-m7350-signal-mod/discussions
+    about: >
+      Install problems, "is this a bug or am I holding it wrong", and ideas you
+      are not sure are worth an issue yet.
+  - name: Security vulnerability
+    url: https://github.com/louij2/tp-link-m7350-signal-mod/security/advisories/new
+    about: >
+      Please report privately rather than in a public issue. This mod adds
+      root-level tooling, so see SECURITY.md for the threat model.

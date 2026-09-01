@@ -2,6 +2,48 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.5.2] — 2026-08-31  ·  **documentation and contribution setup**
+
+No device code changed in this release. It exists because the project went public
+without the things a stranger needs in order to use it or help with it.
+
+### Documentation
+- **Getting root ADB is now an end-to-end guide.** It previously named the
+  required USB composition and stopped, leaving the one step that decides whether
+  anyone can use the mod as an exercise for the reader. Five steps now: install
+  platform-tools, check whether ADB is *already* enabled (some units ship that
+  way), identify what the computer actually saw, get a shell, make it permanent.
+  - The USB id is written down as the diagnostic: `2357:0005` is stock, RNDIS and
+    mass storage with no ADB and no serial port, which is why there is no
+    USB-side trick; `05c6:902b` means ADB is exposed and the problem is drivers
+    or a charge-only cable.
+  - **The commands to make ADB persist were missing entirely**, despite the
+    README claiming to document everything after the root shell:
+    `uci set usb.enum.mode=debug`, `usb.enum.debug_pid=902B`, `uci commit usb`.
+    That lives in `/etc/config/usb` on the persistent rootfs and survives reboots.
+  - New users are pointed at `build-ssh.sh` immediately, since ADB on this device
+    re-enumerates constantly and `deploy.sh` prefers SSH anyway.
+  - The first shell still requires a firmware-specific method this repo does not
+    publish, and now says so plainly rather than trailing off.
+
+### Added
+- **CONTRIBUTING.md** — leads with the most useful contribution (a probe report
+  from a revision other than v3.20 EU), covers working on the UI with no device,
+  and records the house rules, each of which exists because something broke.
+- **SECURITY.md** — the actual threat model: the LAN is the trust boundary,
+  installing an SSH key grants permanent root, FTP and Telnet serve the whole
+  filesystem, there is no TLS, and the releases nobody should run are named.
+- **Issue templates** for bugs and features, and a **pull request template**
+  whose checklist is the house rules. The feature template states the hardware
+  budget and requires confirming the idea is not one of the tested non-starters.
+- **docs/BACKLOG.md** — planned work, ordered, ending with an explicit "not
+  doing" section recording why eSIM management, OpenWRT, SNMP and external
+  antennas are ruled out, each with its evidence.
+- **Discussions enabled**, with the issue chooser routing questions there and
+  security reports to private advisories.
+- The `compatibility` label, which the existing revision-report template already
+  referenced but which did not exist, so it would silently have failed to apply.
+
 ## [2.5.1] — 2026-08-31
 
 ### Changed

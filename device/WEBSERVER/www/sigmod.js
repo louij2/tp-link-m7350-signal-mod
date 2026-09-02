@@ -395,10 +395,15 @@
           'FTP <span class="sigmod-pill" id="pillFtp">--</span></span>' +
         '<span class="sigmod-btn" id="btnTelnet">' + svg('usb', 16) +
           'Telnet <span class="sigmod-pill" id="pillTelnet">--</span></span>' +
+        '<span class="sigmod-btn" id="btnSaver">' + svg('globe', 16) +
+          'Data saver <span class="sigmod-pill" id="pillSaver">--</span></span>' +
         '<span class="sigmod-btn danger" id="btnReboot">' + svg('reboot', 16) + 'Reboot</span>' +
         '<span class="sigmod-btn" id="btnResetTiles">' + svg('advanced', 16) + 'Reset layout</span>' +
       '</div>' +
       '<div class="content-label" style="margin-top:8px;font-size:11px;">' +
+        'Data saver stops the device generating traffic of its own: no latency ping, ' + '\n' +
+        'Prometheus scraping is refused, and both the daemon and this page poll far ' +
+        'less often. Worth turning on before you travel. ' +
         'TTL-fix pins outgoing TTL to 65 (helps tethering on SMARTY/Three). ' +
         'ADB = USB debug bridge. FTP/Telnet serve the whole filesystem on the ' +
         'LAN side only — handy for file access, but leave them off when not in ' +
@@ -546,6 +551,8 @@
         setPill('pillFtp', d.ftp);
         setPill('pillTelnet', d.telnet);
         setPill('pillWifi', d.wifi);
+        setPill('pillSaver', d.saver);
+        if (d.saver) { saverOn = (d.saver === 'on'); applySaverCadence(); }
         var w = document.getElementById('spWan'); if (w) w.textContent = d.wan || '--';
         var t = document.getElementById('spTemp'); if (t && d.temp) t.textContent = d.temp + ' °C';
         var bt = document.getElementById('spBatt');
@@ -727,6 +734,15 @@
     svc('btnTelnet', 'pillTelnet', 'Telnet');
 
     var wifi = document.getElementById('btnWifi');
+    var sv = document.getElementById('btnSaver');
+    if (sv) sv.onclick = function () {
+      var on = document.getElementById('pillSaver').textContent === 'ON';
+      ctl(on ? 'saver_off' : 'saver_on', function (d) {
+        setPill('pillSaver', d.saver || (on ? 'off' : 'on'));
+        applySaverCadence();
+      });
+    };
+
     if (wifi) wifi.onclick = function () {
       var on = document.getElementById('pillWifi').textContent === 'ON';
       if (on && !window.confirm('Turn Wi-Fi OFF? Any devices on the router\'s Wi-Fi (including this one, if you\'re on it) will disconnect. Reach it over USB to turn it back on.')) return;
@@ -1058,14 +1074,30 @@
     try { fetchSignal(); } catch (e) {}
   }
 
+  // Polling cadence. When you view this page over Tailscale from abroad, the
+  // page's own polling crosses the metered link, so data saver has to slow the
+  // browser down too, not just the device. Timers are rebuilt rather than
+  // adjusted because setInterval has no way to change period.
+  var saverOn = false;
+  var tSig = null, tCtl = null, tHist = null;
+
+  function applySaverCadence() {
+    var sig  = saverOn ? 30000  : 1500;
+    var ctlP = saverOn ? 120000 : 6000;
+    var hist = saverOn ? 600000 : 60000;
+    if (tSig)  clearInterval(tSig);
+    if (tCtl)  clearInterval(tCtl);
+    if (tHist) clearInterval(tHist);
+    tSig  = setInterval(tick, sig);
+    tCtl  = setInterval(function () { if (document.getElementById('sigmodPanel')) refreshCtlState(); }, ctlP);
+    tHist = setInterval(fetchHist, hist);
+  }
+
   ensureDarkTheme();
   loadOrderFromDevice();
-  setInterval(tick, 1500);
+  applySaverCadence();
   // Refresh control/system state a bit less often than signal.
-  setInterval(function () { if (document.getElementById('sigmodPanel')) refreshCtlState(); }, 6000);
-  // The ring only gains a sample a minute, so polling it faster is wasted work
-  // on a single slow core.
-  setInterval(fetchHist, 60000);
+
 
   var quick = [50, 150, 300, 500, 800, 1200, 1800, 2500];
   for (var i = 0; i < quick.length; i++) { setTimeout(tick, quick[i]); }

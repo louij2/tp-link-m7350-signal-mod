@@ -198,6 +198,12 @@ hist_push() { # keep a small rolling RSRP ring in tmpfs for the UI sparkline
 }
 
 PING_TARGET=1.1.1.1
+# Data saver. Re-read every loop (a stat() is free) so toggling takes effect
+# without restarting the daemon. When on: no latency ping at all, and the whole
+# loop slows down. The ping is the only thing here that generates traffic of its
+# own; everything else reads the modem locally and costs nothing.
+SAVER_MARK=/etc/signalmod_saver
+saver_on() { [ -f "$SAVER_MARK" ]; }
 BAD=""
 TAC=""; CELLID=""; ICCID=""; SPN=""; slow=0; simtick=0
 select_channel
@@ -265,8 +271,13 @@ while true; do
   fi
   prev_rx=$RX; prev_tx=$TX; prev_t=$NOW
 
-  # Uplink latency (empty when the link is down).
-  LAT=$(ping -c1 -W1 "$PING_TARGET" 2>/dev/null | grep -oE 'time=[0-9.]+' | head -1 | cut -d= -f2)
+  # Uplink latency (empty when the link is down, and skipped entirely in data
+  # saver: it is unsolicited outbound traffic on a metered link).
+  if saver_on; then
+    LAT=""
+  else
+    LAT=$(ping -c1 -W1 "$PING_TARGET" 2>/dev/null | grep -oE 'time=[0-9.]+' | head -1 | cut -d= -f2)
+  fi
 
   # Roughly once a minute: serving-cell read and one sparkline sample.
   # An iteration takes about 7s, not the 5s of the sleep alone.
@@ -283,5 +294,7 @@ while true; do
 
   printf '{"rsrp":"%s","rsrq":"%s","rssi":"%s","earfcn":"%s","band":"%s","mode":"%s","dl_kbps":"%s","ul_kbps":"%s","latency_ms":"%s","uptime":"%s","rx_bytes":"%s","tx_bytes":"%s","tac":"%s","cellid":"%s","iccid":"%s","spn":"%s"}' \
     "$RSRP" "$RSRQ" "$RSSI" "$EARFCN" "$BAND" "$MODE" "$DL_KBPS" "$UL_KBPS" "$LAT" "$UPTIME" "$RX" "$TX" "$TAC" "$CELLID" "$ICCID" "$SPN" > /tmp/signal.json
-  sleep 5
+  # 30s instead of 5s while saving data. Nothing here needs to be quick, and a
+  # slower loop also means fewer AT reads on a saturated single core.
+  if saver_on; then sleep 30; else sleep 5; fi
 done

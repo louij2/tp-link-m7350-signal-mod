@@ -4,6 +4,18 @@
 # throughput and latency in Grafana. Reads the daemon's cache only (safe).
 printf 'Content-Type: text/plain; version=0.0.4; charset=utf-8\r\nCache-Control: no-store\r\n\r\n'
 
+# Data saver: refuse to serve. A Prometheus scraping this from home over a
+# metered link is the single largest recurring cost this device has, far more
+# than the daemon's own traffic. Still returns 200 with a valid (empty)
+# exposition so the scraper records a miss rather than an error storm.
+if [ -f /etc/signalmod_saver ]; then
+  echo "# data saver is enabled on the device; metrics are withheld"
+  echo "# HELP m7350_scrape_success 1 when metrics were served"
+  echo "# TYPE m7350_scrape_success gauge"
+  echo "m7350_scrape_success 0"
+  exit 0
+fi
+
 J=$(cat /tmp/signal.json 2>/dev/null)
 [ -z "$J" ] && { echo "# no data"; exit 0; }
 

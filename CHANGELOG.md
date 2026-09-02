@@ -4,6 +4,23 @@ All notable changes to the M7350 Extreme mod are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Data saver toggle**, in Controls. One switch that stops the device generating
+  traffic of its own, for use on a metered or roaming link:
+  - the daemon's latency ping is skipped entirely (it is the only thing here that
+    generates unsolicited outbound traffic)
+  - `metrics.sh` refuses to serve, so a Prometheus scraping from home over a
+    metered link gets nothing. It still returns a valid, empty exposition with
+    `m7350_scrape_success 0`, so the scraper records a miss rather than erroring
+  - the daemon's loop slows from 5s to 30s
+  - **the web UI slows its own polling too**, from every 1.5s to every 30s, with
+    control state every 2 minutes and signal history every 10. This matters more
+    than the rest: viewing the dashboard over Tailscale from abroad sends every
+    one of those polls across the metered link
+  - state is a marker file on the persistent rootfs like the TTL fix, read
+    directly by the daemon and the CGIs, so nothing needs restarting and no two
+    components can disagree about whether it is on
+
 ### Fixed
 - **Every ADB script assumed any connected device was the router.** `adb`
   attaches to any Android device, so a phone or tablet plugged in for an

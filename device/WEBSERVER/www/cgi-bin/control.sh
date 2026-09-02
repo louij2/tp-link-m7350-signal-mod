@@ -47,6 +47,8 @@ MARK=/etc/signalmod_ttl
 LAN_IP=$(ip -4 addr show br0 2>/dev/null | grep -o 'inet [0-9.]*' | head -1 | cut -d' ' -f2)
 [ -z "$LAN_IP" ] && LAN_IP=192.168.0.1
 FTP_MARK=/etc/signalmod_ftp
+SAVER_MARK=/etc/signalmod_saver
+saver_state() { [ -f "$SAVER_MARK" ] && echo on || echo off; }
 
 # --- FTP (busybox ftpd via tcpsvd, rooted at /, LAN-only) ------------------
 ftp_state() { netstat -ltn 2>/dev/null | grep -q "$LAN_IP:21\|:::21\|0.0.0.0:21" && echo on || echo off; }
@@ -112,6 +114,14 @@ case "$A" in
   wifi_on)  wifi_on;  sleep 1; printf '{"ok":true,"wifi":"%s"}' "$(wifi_state)" ;;
   wifi_off) wifi_off; printf '{"ok":true,"wifi":"off"}' ;;
   wifi_status) printf '{"wifi":"%s"}' "$(wifi_state)" ;;
+
+  # ---- data saver -------------------------------------------------------
+  # Marker file on the persistent rootfs, same pattern as the TTL fix, so it
+  # survives a reboot. The daemon and metrics.sh both read it directly, so there
+  # is nothing to restart and no state to get out of step.
+  saver_on)     touch /etc/signalmod_saver 2>/dev/null; printf '{"ok":true,"saver":"%s"}' "$(saver_state)" ;;
+  saver_off)    rm -f /etc/signalmod_saver 2>/dev/null; printf '{"ok":true,"saver":"%s"}' "$(saver_state)" ;;
+  saver_status) printf '{"saver":"%s"}' "$(saver_state)" ;;
 
   # Change the mod control password. The new value is read from the POST BODY,
   # never the query string, so it does not end up in the web server's log or in

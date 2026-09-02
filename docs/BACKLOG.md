@@ -142,9 +142,11 @@ Recorded so they stop being re-proposed. All tested on v3.20:
   and regulator bring-up written from scratch, and then the modem needs MSS
   remoteproc plus a data path to replace the proprietary QCMAP/qti stack. Months
   of specialist work, for a device whose LTE would be worse than stock afterwards.
-  - [ ] Cheap first step if anyone is curious: `fastboot getvar all` to record
-        what the bootloader actually reports about lock and secure-boot state,
-        which would replace guesswork with a fact
+  - [ ] **`fastboot getvar all`** to record what the bootloader actually reports
+        about lock and secure-boot state, replacing guesswork with a fact.
+        **Blocked: waiting for the SIM to go back in so the device is reachable.**
+  - Work now tracked in a separate private repo, `louij2/m7350-openwrt`, so this
+    project stays about the mod
 - **SNMP.** `snmpd` is resident and wants more RAM than the device has free. The
   Prometheus endpoint covers the same ground for nothing
 - **External antennas.** No connectors on the case, and at RSRP -82 with a flat

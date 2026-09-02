@@ -34,11 +34,19 @@ AT+CRSM does work, which is enough to read EF_ICCID (2FE2) and EF_SPN (6F46), so
 a removable eUICC can be provisioned elsewhere and the router will still tell you
 which profile is enabled.
 
-**Secure boot looks enforced and the LTE stack is proprietary.** Partitions
-include sbl, mba (Modem Boot Authenticator), tz and a signed qdsp, and the data
-path is QCMAP_ConnectionManager plus /usr/bin/qti over SMD. That is why I stopped
-looking at OpenWRT for this box: even with something booting, you would lose the
-modem.
+**OpenWRT is unported here, not impossible.** I originally assumed secure boot
+blocked it, but that was an inference from the presence of sbl/mba/tz partitions,
+which every Qualcomm device has regardless. m0veax/tplink_m7350 reports fastboot
+is available (bootloader 0.5, an LK derivative) and that custom kernels can be
+booted, so the wall is not the bootloader.
+
+The actual wall is the SoC and the modem. MDM9615 and MDM9607 both have mainline
+device tree and remoteproc support; **MDM9625 has neither**, so you would be
+writing a new device tree and bringing up clocks, pinctrl and regulators from
+scratch. Then the modem: the stock data path is QCMAP_ConnectionManager plus
+/usr/bin/qti over SMD, all proprietary, so under mainline you would need the MSS
+remoteproc to load the signed modem firmware and then a data path. Nobody has
+done that for 9625 as far as I can find. If you have, I would love to hear it.
 
 **It is a very small machine.** 41 MB RAM with about 3 MB free and 1.4 MB already
 in swap, one ARMv7 core at 38 BogoMIPS, rootfs 87% full. A speed test on the

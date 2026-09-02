@@ -131,9 +131,20 @@ Recorded so they stop being re-proposed. All tested on v3.20:
 - **eSIM profile management on-device.** `AT+CSIM`, `AT+CCHO` and `AT+CGLA` all
   return errors, so there is no APDU path to the ISD-R and no LPA can run.
   `AT+CRSM` works, which is why ICCID and SPN can still be read
-- **OpenWRT.** `sbl`, `mba`, `tz` and a signed `qdsp` partition, and the data
-  path is proprietary QCMAP over SMD. Even if something booted, the modem would
-  not work
+- **OpenWRT.** *Not ruled out on principle, but nobody has ported it and it is a
+  large job.* An earlier version of this file said secure boot prevented it; that
+  was an inference from the `sbl`/`mba`/`tz` partitions, which every Qualcomm
+  device has whether or not the fuses are blown, and it appears to be wrong.
+  [m0veax/tplink_m7350](https://github.com/m0veax/tplink_m7350) reports fastboot
+  is available (bootloader 0.5, an LK derivative) and that custom kernels can be
+  booted. The real obstacles are that **MDM9625 has no mainline support** (its
+  siblings MDM9615 and MDM9607 do), so it needs a device tree and clock, pinctrl
+  and regulator bring-up written from scratch, and then the modem needs MSS
+  remoteproc plus a data path to replace the proprietary QCMAP/qti stack. Months
+  of specialist work, for a device whose LTE would be worse than stock afterwards.
+  - [ ] Cheap first step if anyone is curious: `fastboot getvar all` to record
+        what the bootloader actually reports about lock and secure-boot state,
+        which would replace guesswork with a fact
 - **SNMP.** `snmpd` is resident and wants more RAM than the device has free. The
   Prometheus endpoint covers the same ground for nothing
 - **External antennas.** No connectors on the case, and at RSRP -82 with a flat

@@ -22,6 +22,7 @@ say "Checking for a connected device..."
   echo "No ADB device found. Enable ADB on the router and connect USB." >&2
   exit 1
 }
+. "$(cd "$(dirname "$0")" && pwd)/lib/assert-device.sh"; assert_is_m7350
 
 say "Backing up stock pages (once)..."
 for f in login.html status.html settings.html; do

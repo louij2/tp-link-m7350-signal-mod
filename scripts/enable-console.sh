@@ -28,6 +28,7 @@ EOF
 fi
 
 "$ADB" get-state >/dev/null 2>&1 || { echo "No ADB device found." >&2; exit 1; }
+. "$(cd "$(dirname "$0")" && pwd)/lib/assert-device.sh"; assert_is_m7350
 
 echo "[*] Installing web console (console.html + cgi-bin/exec.sh)..."
 "$ADB" push "$DEV/WEBSERVER/www/console.html"        "$WWW/console.html"

@@ -52,12 +52,31 @@ if [ "$TRANSPORT" = auto ]; then
   fi
 fi
 
+# Confirm the thing on the other end is actually an M7350 before pushing files at
+# it. adb happily attaches to any Android device, and a phone or tablet plugged
+# in for something else will otherwise be treated as the router. Asked for once
+# a Galaxy Tab was picked up by a post-merge hook and had web assets pushed at it.
+assert_is_m7350() {
+  case "$TRANSPORT" in
+    adb) probe=$("$ADB" shell '[ -d /WEBSERVER/www ] && uci get product.info.product_name 2>/dev/null || echo UNRECOGNISED_DEVICE' 2>/dev/null | tr -d '\r\n') ;;
+    ssh) probe=$(ssh $SSH_OPTS -T "$TARGET" '[ -d /WEBSERVER/www ] && uci get product.info.product_name 2>/dev/null || echo UNRECOGNISED_DEVICE' 2>/dev/null | tr -d '\r\n') ;;
+  esac
+  case "$probe" in
+    *M7350*) : ;;
+    *) die "Refusing to deploy: the connected device does not look like an M7350.
+    It reported: '${probe:-nothing}' and has no /WEBSERVER/www.
+    If an Android phone or tablet is plugged in, unplug it (or set
+    M7350_TRANSPORT=ssh) and try again." ;;
+  esac
+}
+
 case "$TRANSPORT" in
   adb) "$ADB" get-state >/dev/null 2>&1 || die "M7350_TRANSPORT=adb but no ADB device is connected." ;;
   ssh) ssh $SSH_OPTS -T "$TARGET" true >/dev/null 2>&1 || die "M7350_TRANSPORT=ssh but $TARGET did not answer." ;;
   *)   die "Unknown M7350_TRANSPORT '$TRANSPORT' (use adb, ssh or auto)." ;;
 esac
 if [ "$TRANSPORT" = ssh ]; then say "Transport: ssh ($TARGET)"; else say "Transport: adb (USB)"; fi
+assert_is_m7350
 
 # ---- transport-agnostic primitives ----------------------------------------
 push(){ # push <local> <remote>

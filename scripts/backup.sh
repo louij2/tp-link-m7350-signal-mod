@@ -12,6 +12,7 @@ OUT="backup-$STAMP"
 say(){ printf '\033[1;36m[*]\033[0m %s\n' "$1"; }
 
 "$ADB" get-state >/dev/null 2>&1 || { echo "No ADB device found." >&2; exit 1; }
+. "$(cd "$(dirname "$0")" && pwd)/lib/assert-device.sh"; assert_is_m7350
 
 mkdir -p "$OUT/www/cgi-bin" "$OUT/usr-bin" "$OUT/etc-init.d"
 say "Pulling web root..."

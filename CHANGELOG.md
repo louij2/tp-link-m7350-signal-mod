@@ -2,6 +2,22 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [Unreleased]
+
+### Fixed
+- **Every ADB script assumed any connected device was the router.** `adb`
+  attaches to any Android device, so a phone or tablet plugged in for an
+  unrelated reason was treated as an M7350 and had files pushed at it. This was
+  not hypothetical: a Galaxy Tab left plugged in got picked up by the post-merge
+  hook and had web assets pushed at it, and only failed because Android's rootfs
+  is read-only. `deploy.sh`, `install.sh`, `backup.sh`, `build-ssh.sh` and
+  `enable-console.sh` now confirm the device reports an M7350 product name and
+  has `/WEBSERVER/www` before writing anything, via a shared
+  `scripts/lib/assert-device.sh` so the check cannot drift between them.
+  - The first version of the guard did not work: the sentinel it echoed for an
+    unrecognised device was `NOTM7350`, which matches `*M7350*`. Caught by
+    testing it against the tablet rather than assuming.
+
 ## [2.5.2] — 2026-08-31  ·  **documentation and contribution setup**
 
 No device code changed in this release. It exists because the project went public

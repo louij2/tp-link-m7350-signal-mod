@@ -26,6 +26,7 @@ say(){ printf '\033[1;36m[*]\033[0m %s\n' "$1"; }
 [ -f "$PUBKEY" ] || { echo "No pubkey at $PUBKEY (pass one as arg 1)"; exit 1; }
 docker info >/dev/null 2>&1 || { echo "Docker isn't running. Start Docker Desktop (and allow it in Little Snitch), then re-run."; exit 1; }
 "$ADB" get-state >/dev/null 2>&1 || { echo "No ADB device. Enable ADB + connect USB."; exit 1; }
+. "$(cd "$(dirname "$0")" && pwd)/lib/assert-device.sh"; assert_is_m7350
 
 say "Cross-compiling static dropbear $DROPBEAR_VER (armv7 musl, via QEMU)..."
 docker run --rm --platform linux/arm/v7 -v "$OUT":/out alpine:3.19 sh -c "

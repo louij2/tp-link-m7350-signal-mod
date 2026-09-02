@@ -1,6 +1,6 @@
 # TP-Link M7350 — LTE signal stats + dark UI mod
 
-> **Use [v2.5.2](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
+> **Use [v2.6.0](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
 > later.** Earlier versions were progressively less safe by default: v2.0.0
 > shipped the optional root tools (FTP/Telnet/web console) with **no
 > authentication**; v2.1.0 added a password gate but still fell back to
@@ -41,6 +41,7 @@ GL.iNet router): you can watch signal quality and the serving band straight from
 | **Drag-and-drop** card arrangement, saved on the router | Post-login Status tab |
 | **Resizable cards** — drag the corner grip; content reflows to fit | Post-login Status tab |
 | **Hardware**: CPU, load, RAM, swap, storage, SD-card slot | Post-login Status tab |
+| **Data saver**: stops the ping, refuses metric scrapes, slows all polling | Post-login Status tab |
 | **Prometheus** metrics endpoint (for Grafana) | `http://192.168.0.1/cgi-bin/metrics.sh` |
 | Modern dark theme with **inline-SVG icons** (readable on every page, incl. Advanced) | Whole web UI (login + admin) |
 | Root web console (optional) | `http://192.168.0.1/console.html` |

@@ -2,7 +2,7 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
-## [Unreleased]
+## [2.6.0] — 2026-09-01  ·  **data saver**
 
 ### Added
 - **Data saver toggle**, in Controls. One switch that stops the device generating

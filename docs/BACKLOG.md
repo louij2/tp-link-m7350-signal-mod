@@ -53,6 +53,48 @@ Right now a PR could break the device and nothing would catch it.
       and redraws continuously, so it needs displacing plus a font blitter.
       Needs someone physically watching the screen
 
+## 3b. Data budgeting (for metered/roaming use)
+
+Prompted by burning 20 GB in a few days. The device is a fine LTE backup at home
+and a liability abroad, so it needs to be able to shut up and to say who is
+talking.
+
+**Where attribution has to live.** The M7350 sees a single aggregate flow from
+the GL.iNet, so it can never tell you *which client* spent the data. Per-client
+accounting belongs on the GL.iNet, which sees each device separately.
+
+- [ ] **nlbwmon on the GL.iNet** for per-host, per-protocol accounting with a
+      LuCI page. This is the actual answer to "who used what"
+- [ ] **vnstat** alongside it for per-interface history, so a spike can be placed
+      in time
+- [ ] Document both in the README's travel section, since that is where someone
+      will look
+
+**A data-saver mode in the mod**, one toggle in Controls that stops the device
+chattering:
+
+- [ ] Stop the daemon's latency ping (currently ~every 7s to 1.1.1.1; tiny, but
+      it is unsolicited traffic on a metered link and looks bad in a data audit)
+- [ ] Have `metrics.sh` refuse while data-saver is on, so a home Prometheus
+      scraping over Tailscale cannot pull from it
+- [ ] Slow the poll cadence: signal every 30s rather than 5s, cell and SIM reads
+      hourly rather than each minute
+- [ ] Persist the setting like the TTL toggle, and re-apply at boot
+- [ ] Show it plainly in the UI, because a silent data-saver is worse than none
+
+**Make usage visible before it is a problem:**
+
+- [ ] Surface the stock **Data Settings** monthly limit in the mod UI. The
+      firmware already supports a cap and a warning threshold; it is buried
+- [ ] Add data used today / this month to the dashboard, from the counters the
+      Statistics card already reads
+- [ ] A **usage sparkline** reusing the existing ring, so a 5 GB day is obvious
+- [ ] Optional: alert when a threshold is crossed, via the existing metrics path
+
+**Worth measuring rather than assuming:** before optimising anything, capture a
+day of nlbwmon output. Telemetry is almost certainly noise next to one laptop
+deciding to sync, and fixing the wrong thing costs effort and changes nothing.
+
 ## 4. Dashboard polish
 
 - [ ] **Per-card visibility.** Hide cards you never look at, alongside reorder

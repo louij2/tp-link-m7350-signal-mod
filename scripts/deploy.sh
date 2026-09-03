@@ -119,7 +119,7 @@ n=0
 for f in sigmod.js; do
   send "$DEV/WEBSERVER/www/$f" "$WWW/$f" 644; n=$((n+1))
 done
-for c in signal_stats.sh sysinfo.sh control.sh deviceinfo.sh metrics.sh keys.sh signal_hist.sh tiles.sh; do
+for c in signal_stats.sh sysinfo.sh control.sh deviceinfo.sh metrics.sh keys.sh signal_hist.sh tiles.sh sdcard.sh; do
   [ -f "$DEV/WEBSERVER/www/cgi-bin/$c" ] || continue
   send "$DEV/WEBSERVER/www/cgi-bin/$c" "$WWW/cgi-bin/$c" 755; n=$((n+1))
 done

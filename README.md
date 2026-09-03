@@ -42,6 +42,7 @@ GL.iNet router): you can watch signal quality and the serving band straight from
 | **Resizable cards** — drag the corner grip; content reflows to fit | Post-login Status tab |
 | **Hardware**: CPU, load, RAM, swap, storage, SD-card slot | Post-login Status tab |
 | **Data saver**: stops the ping, refuses metric scrapes, slows all polling | Post-login Status tab |
+| **SD card**: setup/format helper, long-term signal history, CSV export | `sd_setup.sh`, Hardware card |
 | **Prometheus** metrics endpoint (for Grafana) | `http://192.168.0.1/cgi-bin/metrics.sh` |
 | Modern dark theme with **inline-SVG icons** (readable on every page, incl. Advanced) | Whole web UI (login + admin) |
 | Root web console (optional) | `http://192.168.0.1/console.html` |

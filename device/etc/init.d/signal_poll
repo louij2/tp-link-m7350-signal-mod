@@ -50,6 +50,18 @@ case "$1" in
     if [ -f /etc/signalmod_ftp ] && ! netstat -ltn 2>/dev/null | grep -q ':21 '; then
       nohup setsid tcpsvd -vE "$LANIP" 21 ftpd -w / </dev/null >/dev/null 2>&1 &
     fi
+    # Re-mount the SD card if one was set up. sd_setup.sh writes the marker with
+    # the device node in it, so we do not have to guess which partition.
+    if [ -s /etc/signalmod_sd ]; then
+      sddev=$(cat /etc/signalmod_sd 2>/dev/null)
+      case "$sddev" in
+        /dev/mmcblk*)
+          mkdir -p /media/card 2>/dev/null
+          mount | grep -q " /media/card " || mount "$sddev" /media/card 2>/dev/null
+          ;;
+      esac
+    fi
+
     # OLED brand rotator (alternates the OLED operator line model <-> ISP).
     if [ -x /usr/bin/oled_brand.sh ]; then
       for d in /proc/[0-9]*; do q=${d##*/}; [ "$q" = "$$" ] || [ "$q" = "$PPID" ] && continue; grep -qs /usr/bin/oled_brand "$d/cmdline" 2>/dev/null && oledrun=1; done

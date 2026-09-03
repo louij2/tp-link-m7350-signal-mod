@@ -189,6 +189,31 @@ poll_cell() {
   case "$CELLID" in *[!0-9A-Fa-f]*|'') CELLID="" ;; esac
 }
 
+SD_MARK=/etc/signalmod_sd
+SD_MNT=/media/card
+
+sd_ready() {
+  [ -f "$SD_MARK" ] || return 1
+  mount | grep -q " $SD_MNT " || return 1
+  [ -d "$SD_MNT/signalmod/history" ] || mkdir -p "$SD_MNT/signalmod/history" 2>/dev/null
+  return 0
+}
+
+# Long-term history on the SD card, one CSV per day. The tmpfs ring above stays
+# as it is: it feeds the sparkline and wants to be small and fast. This is the
+# opposite: durable, cheap to append, and survives reboots, so a month of signal
+# can be graphed later. One line a minute is ~50 KB a day, nothing for a card,
+# and 1440 appends a day is nothing for its wear either.
+sd_history_push() {
+  sd_ready || return 0
+  f="$SD_MNT/signalmod/history/$(date +%Y-%m-%d).csv"
+  [ -f "$f" ] || printf 'time,rsrp,rsrq,rssi,band,earfcn,cellid,tac,dl_kbps,ul_kbps,latency_ms\n' > "$f" 2>/dev/null
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+    "$(date +%H:%M:%S)" "$RSRP" "$RSRQ" "$RSSI" "$BAND" "$EARFCN" \
+    "$CELLID" "$TAC" "$DL_KBPS" "$UL_KBPS" "$LAT" >> "$f" 2>/dev/null
+  return 0
+}
+
 hist_push() { # keep a small rolling RSRP ring in tmpfs for the UI sparkline
   [ -n "$1" ] || return 0
   printf '%s\n' "$1" >> "$HIST" 2>/dev/null
@@ -286,6 +311,7 @@ while true; do
     slow=0
     poll_cell
     hist_push "$RSRP"
+    sd_history_push
     # SIM identity barely ever changes, so read it far less often than the rest.
     # Re-reading at all is what catches an eUICC profile switch or a card swap.
     simtick=$((simtick + 1))

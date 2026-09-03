@@ -569,7 +569,7 @@
         var rf = mb(d.rootfree), uf = mb(d.usrfree);
         setx('hwRoot', rf !== null ? (rf.toFixed(1) + ' MB free' + (d.rootpct ? ' · ' + d.rootpct + '%' : '')) : '—');
         setx('hwUsr',  uf !== null ? (uf.toFixed(1) + ' MB free' + (d.usrpct ? ' · ' + d.usrpct + '%' : '')) : '—');
-        setx('hwSd',   d.sd || '—');
+        setx('hwSd',   (d.sd || '—') + (d.sddays && d.sddays !== '0' ? ' · ' + d.sddays + 'd history' : ''));
         setx('hwTemp', d.temp ? d.temp + ' °C' : '—');
       } catch (e) {}
     };

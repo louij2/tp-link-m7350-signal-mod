@@ -32,7 +32,7 @@ done
 say "Deploying signal daemon + init script..."
 "$ADB" push "$DEV/usr/bin/signal_poll.sh"          /usr/bin/signal_poll.sh
 "$ADB" shell "chmod 755 /usr/bin/signal_poll.sh"
-for d in oled_brand.sh lte_reconnect.sh network_select.sh; do
+for d in oled_brand.sh lte_reconnect.sh network_select.sh sd_setup.sh; do
   [ -f "$DEV/usr/bin/$d" ] && { "$ADB" push "$DEV/usr/bin/$d" "/usr/bin/$d"; "$ADB" shell "chmod 755 /usr/bin/$d"; }
 done
 # Login banner: /etc/profile already sources /etc/profile.d/*.sh, so this is a

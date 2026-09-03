@@ -2,6 +2,29 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [Unreleased]
+
+### Added
+- **SD card support.** `sd_setup.sh` inspects a card, optionally formats it, then
+  mounts it and records a marker so the init script remounts it at boot.
+  - Inspection is the default and changes nothing. Formatting requires
+    `CONFIRM=yes` **and** refuses to touch anything that is not `/dev/mmcblk*`,
+    because the router's own firmware is on mtd and a mistake there is not
+    recoverable. It prints the card's size, partitions, filesystem and a
+    read-only peek at its contents before erasing anything.
+- **Long-term signal history on the card**, one CSV per day with RSRP, RSRQ,
+  RSSI, band, EARFCN, cell, TAC, throughput and latency. The tmpfs ring that
+  feeds the sparkline is unchanged: it wants to stay small and fast, so this is
+  the opposite, durable and cheap to append, and it survives reboots. About
+  50 KB and 1440 appends a day, which is nothing for a card or its wear.
+- **`sdcard.sh`** to list and download that history as CSV. Password-gated:
+  a record of which cells the device camped on and when is a movement log, so it
+  is not served to the LAN unauthenticated.
+- The Hardware card now shows SD free space and how many days of history exist.
+
+**Not yet verified on hardware** — the device has been unreachable since the SIM
+came out, so all of this is written but untested on a real card.
+
 ## [2.6.0] — 2026-09-01  ·  **data saver**
 
 ### Added

@@ -56,6 +56,7 @@ USRF=$(dfree /usr); USRP=$(dpct /usr)
 SAVER=$([ -f /etc/signalmod_saver ] && echo on || echo off)
 
 SD="no slot"
+SDDAYS=""
 if [ -d /sys/class/mmc_host/mmc0 ]; then
   SD="empty"
   MMC=$(awk '/mmcblk[0-9]+$/{print $4; exit}' /proc/partitions 2>/dev/null)
@@ -63,12 +64,13 @@ if [ -d /sys/class/mmc_host/mmc0 ]; then
     MP=$(awk -v d="/dev/$MMC" '$1 ~ d {print $2; exit}' /proc/mounts 2>/dev/null)
     if [ -z "$MP" ]; then MP=$(awk -v d="$MMC" '$1 ~ d {print $2; exit}' /proc/mounts 2>/dev/null); fi
     if [ -n "$MP" ]; then
-      SD="$(df "$MP" 2>/dev/null | awk 'NR==2{printf "%dMB free", $4/1024}') at $MP"
+      SD=$(df "$MP" 2>/dev/null | awk 'NR==2{ if ($4 > 1048576) printf "%.1fGB free", $4/1048576; else printf "%dMB free", $4/1024 }')
+      SDDAYS=$(ls "$MP"/signalmod/history/*.csv 2>/dev/null | wc -l | tr -d ' ')
     else
-      SD="card present, not mounted"
+      SD="present, not mounted"
     fi
   fi
 fi
 
 printf '{"uptime":"%s","temp":"%s","load":"%s","memtotal":"%s","memfree":"%s","wan":"%s","ttl":"%s","adb":"%s","ftp":"%s","telnet":"%s","ssh":"%s","battery":"%s","charging":"%s","wifi":"%s","cpu":"%s","swaptotal":"%s","swapfree":"%s","rootfree":"%s","rootpct":"%s","usrfree":"%s","usrpct":"%s","sd":"%s","saver":"%s"}' \
-  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG" "$WIFI" "$CPU" "$SWT" "$SWF" "$ROOTF" "$ROOTP" "$USRF" "$USRP" "$SD" "$SAVER"
+  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG" "$WIFI" "$CPU" "$SWT" "$SWF" "$ROOTF" "$ROOTP" "$USRF" "$USRP" "$SD" "$SDDAYS" "$SAVER"

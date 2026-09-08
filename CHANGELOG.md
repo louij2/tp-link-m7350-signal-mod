@@ -2,7 +2,69 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
-## [Unreleased]
+## [2.6.1] — 2026-09-09  ·  **eSIM fixes, masonry dashboard**
+
+### Fixed
+- **The OLED named the wrong network, and would have named the wrong network on
+  any device.** `oled_brand.sh` had `ISP="Three"` hardcoded, so the panel showed
+  whichever SIM happened to be fitted when that line was written and kept showing
+  it after a swap. The operator is now looked up each cycle, so a SIM change or
+  an eSIM profile switch is picked up without a restart.
+  - The MCC/MNC table now lives in one file, `isp_name.sh`, shared by the OLED
+    and the web UI so the two cannot disagree. `deviceinfo.sh` carried a second
+    copy of it.
+  - `isp_profile.profile_isp_data.isp_name` is **not** a source of truth for
+    this: `oled_brand.sh` repurposes that key to flash the model name, and the
+    firmware never refreshes it on a SIM swap. After moving from a Three SIM to
+    a Nomad eSIM it still read `Three` while the mcc/mnc stored beside it had
+    correctly changed to 234/15.
+  - `/etc/signalmod_isp` overrides the name. A travel eSIM has no identity of
+    its own on the network, it roams on a host operator, so the modem reports
+    Vodafone and never Nomad. The override is how you name the reseller.
+- **Data would not flow on a new SIM because network selection was stuck on
+  manual**, pinned to the previous SIM's operator with the new one marked
+  forbidden in a stale scan cache. That registers with full signal and passes no
+  data, which looks exactly like no coverage. The daemon now resets it to
+  automatic, but only when selection is manual, only after about five minutes
+  with no default route, and only once per boot, so it can never fight an
+  operator you chose on purpose. It goes through the RIL over ubus rather than
+  `AT+COPS`, which can wedge an smd channel until a reboot.
+- **The Hardware card could go blank and stay blank.** Every field was set inside
+  a single `try` with an empty `catch`, hardware last, so anything throwing
+  earlier wiped the rest of the card in silence. Each group is guarded separately
+  now and failures warn to the console.
+- **CPU showed nothing on first load.** It was only ever a delta against the
+  previous poll, so the first call after boot had no sample to diff, and two
+  calls inside the same jiffy gave a zero-width window. It now samples twice
+  in-script when there is nothing to diff against.
+
+### Changed
+- **The dashboard packs as masonry instead of a grid.** A grid row is as tall as
+  its tallest card, so the Controls card padded every short card beside it with
+  dead space. Cards now sit directly under one another. Drag to reorder is
+  unchanged.
+
+### Added
+- **`isp_name.sh`** — the single place the operator name is decided, with an
+  `/etc/signalmod_isp` override.
+- **`at.sh`** — send AT commands to the modem without hanging. The obvious form
+  of this, backgrounding a reader and killing it afterwards, hangs any adb shell
+  that calls it: the reader keeps the pty as its controlling terminal even with
+  every fd redirected. It uses one bidirectional fd and `read -t` instead. Prefer
+  ubus over AT wherever the firmware already exposes what you need, because
+  probing wedges smd channels until a reboot.
+
+### Known traps recorded
+- `apn.sh --apn` writes uci `isp_profile`, which is **display only**. QCMAP dials,
+  and `mobileap_cfg.xml` points it at a profile held in the modem, so the change
+  never reaches it. Use **Advanced → Dial-up Settings**, which posts to
+  `qcmap_web_cgi`. The script now says this instead of claiming otherwise.
+- For a travel eSIM the firmware picks an operator by the **visited** network's
+  MCC/MNC and applies that operator's own subscriber APN, which the network then
+  rejects from a non-subscriber. Set APN type **Dynamic** and auth **None**.
+- busybox `tr -dc '[:print:]'` deletes **every** character on this build: no
+  POSIX character class support, and it fails silently rather than erroring. Use
+  an explicit range.
 
 ### Fixed
 - **`sysinfo.sh` returned two JSON objects, and the UI silently showed nothing.**
@@ -52,8 +114,11 @@ All notable changes to the M7350 Extreme mod are documented here.
   is not served to the LAN unauthenticated.
 - The Hardware card now shows SD free space and how many days of history exist.
 
-**Not yet verified on hardware** — the device has been unreachable since the SIM
-came out, so all of this is written but untested on a real card.
+**Hardware status (updated 2026-09-09):** `apn.sh` inspection, roaming and the
+OLED/operator work are verified on the device. The **SD card path is still
+untested end to end**: the card in the router is exFAT, which this kernel cannot
+mount, so nothing has yet written or read a real history file. `sd_setup.sh`
+detects it correctly and says so, but formatting has not been run.
 
 ## [2.6.0] — 2026-09-01  ·  **data saver**
 

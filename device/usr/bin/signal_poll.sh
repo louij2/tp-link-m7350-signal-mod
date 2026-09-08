@@ -228,6 +228,38 @@ PING_TARGET=1.1.1.1
 # loop slows down. The ping is the only thing here that generates traffic of its
 # own; everything else reads the modem locally and costs nothing.
 SAVER_MARK=/etc/signalmod_saver
+# Manual network selection with no data bearer is a silent, total outage: the
+# modem registers, the bars are full, and nothing routes. It happened here on a
+# Nomad eSIM, where the modem was still pinned to the previous SIM's operator.
+# Nothing in the firmware ever resets this, so a SIM swap inherits it forever.
+#
+# The rule is deliberately narrow. A manual selection that is working is left
+# alone; only manual selection that has produced no default route for several
+# minutes gets reset, and only once per boot, so this can never fight a user
+# who has chosen an operator on purpose.
+#
+# This goes through the RIL over ubus rather than AT+COPS on an smd channel.
+# The AT path wedges channels until a reboot, which is not something a daemon
+# should ever risk doing to itself.
+NOROUTE=0
+AUTOSEL_MARK=/tmp/.sigmod_autosel_done
+autosel_guard() {
+  [ -f "$AUTOSEL_MARK" ] && return 0
+  if [ -n "$(wan_iface)" ]; then NOROUTE=0; return 0; fi
+  MODE_SEL=$(uci get 4g_network.network_mode.network_selection_mode 2>/dev/null)
+  [ "$MODE_SEL" = "1" ] || { NOROUTE=0; return 0; }
+  NOROUTE=$((NOROUTE + 1))
+  # 60 polls is about five minutes at the normal 5s cadence (half an hour in
+  # data-saver mode, which is fine: nothing is moving on the link anyway).
+  # Comfortably longer than a normal attach, so a slow registration is never
+  # mistaken for a stuck one.
+  [ "$NOROUTE" -lt 60 ] && return 0
+  ubus call tpril_network setNetworkSelectionMode '{"networkSelectionMode":0}' >/dev/null 2>&1
+  : > "$AUTOSEL_MARK"
+  logger -t signal_poll "manual network selection with no data bearer for 5min; reset to automatic" 2>/dev/null
+  NOROUTE=0
+}
+
 saver_on() { [ -f "$SAVER_MARK" ]; }
 BAD=""
 TAC=""; CELLID=""; ICCID=""; SPN=""; slow=0; simtick=0
@@ -306,6 +338,8 @@ while true; do
 
   # Roughly once a minute: serving-cell read and one sparkline sample.
   # An iteration takes about 7s, not the 5s of the sleep alone.
+  autosel_guard
+
   slow=$((slow + 1))
   if [ "$slow" -ge 8 ]; then
     slow=0

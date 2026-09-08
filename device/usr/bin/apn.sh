@@ -88,7 +88,25 @@ fi
 
 if [ "$CHANGED" = 1 ]; then
   say ""
-  say "Committed to the persistent config. The modem re-reads these on a data"
-  say "reconnect, so either reboot the device or toggle the connection, then"
-  say "re-run apn.sh with no arguments to confirm rmnet0 has an address."
+  say "Roaming changes take effect on the next data reconnect."
+  if [ -n "$NEWAPN" ]; then
+    say ""
+    say "WARNING: the APN written above almost certainly will NOT reach the modem."
+    say "QCMAP is what actually dials, and /etc/mobileap_cfg.xml points it at"
+    say "  <V4_UMTS_PROFILE_INDEX>0</V4_UMTS_PROFILE_INDEX>"
+    say "which is a profile held in the modem, not this uci list. The uci entries"
+    say "are only what the web UI displays. Setting one here changes the display"
+    say "and nothing else."
+    say ""
+    say "To change the APN for real, use the stock UI:"
+    say "  Advanced -> Dial-up Settings -> add a profile"
+    say "That posts to qcmap_web_cgi, which does reach the modem."
+    say ""
+    say "For a travel eSIM (Nomad, Airalo) set APN type to Dynamic and auth to"
+    say "None. Those SIMs roam by definition, and the firmware otherwise picks"
+    say "the VISITED network operator by MCC/MNC and applies that operator's own"
+    say "subscriber APN, which the network will reject for a roamer."
+  fi
+  say ""
+  say "Then re-run apn.sh with no arguments and confirm rmnet0 has an address."
 fi

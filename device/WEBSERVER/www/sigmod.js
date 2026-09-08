@@ -55,9 +55,15 @@
      * and floated labels. Every one of those has to be undone explicitly or the
      * container keeps its 630px whether or not anything is in it -- which is
      * what produced a tall empty band above the cards. */
-    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;grid-auto-flow:row dense!important;gap:12px!important;align-items:start!important;}',
-    '.statusPage .sigmod-card{margin:0 0 12px!important;width:auto!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
-    '.statusPage .pinSection,.statusPage .connectionSection,.statusPage .wifiSection,.statusPage .statisticSection,.statusPage .simSection,.statusPage .dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0!important;height:auto!important;box-sizing:border-box!important;position:relative!important;}',
+    '.statusPage{width:auto!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;display:block!important;column-width:340px!important;column-gap:12px!important;}',
+    /* Masonry, not grid. A grid row is as tall as its tallest card, so the
+     * 490px Controls card padded every short card beside it with dead space.
+     * Columns pack each card directly under the one above it, which is what
+     * gives the back-to-back look. Every direct child has to opt out of
+     * column breaking or a card will be sliced across two columns. */
+    '.statusPage>*{width:100%!important;margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;float:none!important;}',
+    '.statusPage .sigmod-card{margin:0 0 12px!important;width:100%!important;height:auto!important;box-sizing:border-box!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;}',
+    '.statusPage .pinSection,.statusPage .connectionSection,.statusPage .wifiSection,.statusPage .statisticSection,.statusPage .simSection,.statusPage .dataSection{width:auto!important;height:auto!important;min-height:0!important;float:none!important;margin:0 0 12px!important;height:auto!important;box-sizing:border-box!important;position:relative!important;}',
     '.statusPage .content-group{height:auto!important;min-height:0!important;margin-left:0!important;padding-top:0!important;min-width:0!important;overflow-wrap:break-word!important;}',
     '.statusPage .content-group>.content-label{float:none!important;width:auto!important;margin-right:0!important;}',
     '.statusPage .content-group>label{white-space:normal!important;min-width:0!important;overflow-wrap:break-word!important;}',
@@ -69,7 +75,11 @@
     '.statusPage .content-label{display:block!important;min-width:0!important;color:#9aa4b2!important;font-size:11px!important;font-weight:400!important;}',
     '.statusPage .content-group>label+label,.statusPage .content-group>label:last-child:not(.content-label),.statusPage .content-group>span:last-child,.statusPage .content-group>div:last-child:not(.content-label){display:block!important;font-size:14px!important;color:#e6edf3!important;margin-top:2px!important;overflow-wrap:break-word!important;}',
     /* the wrapper divs stay transparent; the real sections become the cards */
-    '.statusPage>div{background:transparent!important;border:0!important;padding:0!important;margin:0!important;}',
+    '.statusPage>div{background:transparent!important;border:0!important;padding:0!important;margin:0 0 12px!important;}',
+    /* Keep the bottom margin here. This rule and the section rule above both
+     * beat .statusPage>* on specificity, so zeroing the margin in either one
+     * silently removes the gutter between stock cards and merges them into
+     * what looks like a single tall panel. */
     /* Each stock section becomes a dense auto-fill grid. NOTHING is hidden,
      * moved or duplicated -- every stock row stays exactly where the firmware
      * put it and merely reflows into columns, so no value can go missing and
@@ -86,8 +96,6 @@
     '.sigmod-col>.sigmod-card{margin:0!important;height:auto!important;background:#171b21!important;border:1px solid #2a313b!important;border-radius:10px!important;padding:14px 16px!important;box-sizing:border-box!important;}',
     '.sigmod-cards{display:block!important;column-width:300px!important;column-gap:12px!important;margin:12px 0!important;}',
     '.sigmod-cards>.sigmod-card{margin:0 0 12px!important;break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;width:auto!important;}',
-    /* headers and any full-width controls span every column */
-    '.statusPage .statusHeader{grid-column:1/-1!important;}',
     '.statusPage .btn,.statusPage button,.statusPage input[type="button"],.statusPage input[type="submit"]{justify-self:start!important;}',
     /* two-column top row (Connection | Wi-Fi) with a real gap, Stats full width */
     '.connectionSection:not(.hide),.wifiSection:not(.hide){width:auto!important;}',
@@ -158,7 +166,7 @@
     '.sigmod-key .kf{font-size:10px;color:#9aa4b2!important;overflow-wrap:break-word;font-family:monospace;}',
     '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
     '.sigmod-tile{cursor:grab;}',
-    '@media(max-width:700px){.statusPage>*{grid-column:auto!important;}}',
+    '@media(max-width:700px){.statusPage{column-width:auto!important;column-count:1!important;}}',
 
     '.sigmod-tile:active{cursor:grabbing;}',
     '.sigmod-drag{opacity:.35;}',

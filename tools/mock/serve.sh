@@ -15,7 +15,10 @@ REPO="$(cd "$HERE/../.." && pwd)"
 ROOT="${MOCK_ROOT:-${TMPDIR:-/tmp}}/m7350-mock"
 
 rm -rf "$ROOT"; mkdir -p "$ROOT/cgi-bin"
-cp "$REPO/device/WEBSERVER/www/sigmod.js" "$ROOT/sigmod.js"
+# Symlink, not copy. A copy is taken once at startup, so every edit to
+# sigmod.js needs a server restart to appear -- and a stale copy will happily
+# render a "fix" that is not actually in the file you just changed.
+ln -sf "$REPO/device/WEBSERVER/www/sigmod.js" "$ROOT/sigmod.js"
 [ -f "$REPO/device/WEBSERVER/www/darkmode.css" ] && cp "$REPO/device/WEBSERVER/www/darkmode.css" "$ROOT/" || true
 cp "$HERE"/*.html "$HERE"/stock.css "$ROOT/"
 cp "$HERE"/cgi-bin/* "$ROOT/cgi-bin/"

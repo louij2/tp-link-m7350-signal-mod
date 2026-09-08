@@ -5,6 +5,13 @@ All notable changes to the M7350 Extreme mod are documented here.
 ## [Unreleased]
 
 ### Added
+- **`apn.sh`** — inspect and change the two settings that decide whether a SIM
+  gets online: the APN, and whether data is allowed while roaming. Inspection is
+  the default and changes nothing; it lists every APN profile and marks the
+  active one, so you can see what you are about to change before changing it.
+  - Leads with the roaming point because it is the trap: **a travel eSIM roams by
+    definition**, so with `roam_switch=0` the modem registers, shows full signal,
+    and silently refuses to pass data. That is indistinguishable from a wrong APN.
 - **SD card support.** `sd_setup.sh` inspects a card, optionally formats it, then
   mounts it and records a marker so the init script remounts it at boot.
   - Inspection is the default and changes nothing. Formatting requires

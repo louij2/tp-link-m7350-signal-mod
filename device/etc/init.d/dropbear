@@ -1,0 +1,53 @@
+#!/bin/sh
+# Start dropbear at boot, key-only, bound to the LAN.
+#
+# build-ssh.sh installed the binary and host keys but never installed this, so
+# SSH survived until the first reboot and then quietly vanished, leaving USB-ADB
+# as the only way in. That is exactly the wrong dependency for a device that
+# normally lives at the end of a USB cable somewhere else.
+#
+# Bound to the br0 address rather than 0.0.0.0 so it is never exposed on the WAN
+# side, and derived at runtime so it follows a LAN IP change.
+DROPBEAR=/usr/sbin/dropbear
+KEYDIR=/etc/dropbear
+
+running() {
+  me=$$
+  for d in /proc/[0-9]*; do
+    p=${d##*/}
+    [ "$p" = "$me" ] && continue
+    [ "$p" = "$PPID" ] && continue
+    grep -qs "$DROPBEAR" "$d/cmdline" 2>/dev/null && return 0
+  done
+  return 1
+}
+
+start() {
+  [ -x "$DROPBEAR" ] || { echo "dropbear not installed"; exit 1; }
+  running && { echo "dropbear already running"; return 0; }
+  LAN=$(ip -4 addr show br0 2>/dev/null | sed -n 's/.*inet \([0-9.]*\).*/\1/p' | head -1)
+  [ -n "$LAN" ] || LAN=192.168.2.1
+  # -s no password logins, -g no root password login: key-only, both belt and braces
+  "$DROPBEAR" -r "$KEYDIR/dropbear_ed25519_host_key" -r "$KEYDIR/dropbear_rsa_host_key" \
+              -s -g -p "$LAN:22" >/dev/null 2>&1
+  sleep 1
+  running && echo "dropbear started on $LAN:22" || echo "dropbear FAILED to start"
+}
+
+stop() {
+  me=$$
+  for d in /proc/[0-9]*; do
+    p=${d##*/}
+    [ "$p" = "$me" ] && continue
+    grep -qs "$DROPBEAR" "$d/cmdline" 2>/dev/null && kill "$p" 2>/dev/null
+  done
+  echo "dropbear stopped"
+}
+
+case "$1" in
+  start)   start ;;
+  stop)    stop ;;
+  restart) stop; sleep 1; start ;;
+  status)  running && echo "running" || echo "not running" ;;
+  *) echo "usage: $0 {start|stop|restart|status}"; exit 1 ;;
+esac

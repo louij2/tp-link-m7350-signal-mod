@@ -4,6 +4,29 @@ All notable changes to the M7350 Extreme mod are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **`sysinfo.sh` returned two JSON objects, and the UI silently showed nothing.**
+  The printf format string had 23 placeholders while 28 arguments were passed, so
+  busybox printf reused the format and emitted a second object full of shifted
+  values (`"load":"internet"`, which was the APN). The Hardware card, the pills
+  and the roaming state all sat blank because the response would not parse. The
+  format is now generated from the argument list so the two cannot drift.
+- **SSH did not survive a reboot.** `build-ssh.sh` installed the dropbear binary,
+  host keys and authorized_keys but never an init script, so SSH worked until the
+  first reboot and then vanished, leaving USB-ADB as the only way in. That is the
+  wrong dependency for a device that normally lives at the end of a cable
+  somewhere else. There is now an `/etc/init.d/dropbear` linked from `rc5.d`,
+  bound to the br0 address so it is never exposed WAN-side.
+- `sd_setup.sh` reported the wrong filesystem: busybox `blkid` ignores its
+  argument and lists every block device, so it described a loop device. It now
+  reads the superblock signature directly and says whether the kernel can mount
+  it at all.
+
+### Changed
+- **Card resizing removed; drag to reorder stays.** The corner grip was fiddly,
+  and cards that simply reflow read better than a grid of hand-tuned boxes. Old
+  saved layouts containing sizes still load, the sizes are just ignored.
+
 ### Added
 - **`apn.sh`** — inspect and change the two settings that decide whether a SIM
   gets online: the APN, and whether data is allowed while roaming. Inspection is

@@ -42,9 +42,17 @@ say "  size        $(awk -v k="$SIZE_KB" 'BEGIN{printf "%.1f GB", k/1048576}')"
 say "  partitions  $(awk -v d="$DISK" '$4 ~ ("^" d) {printf "%s ", $4}' /proc/partitions)"
 
 # ---- what is already on it -------------------------------------------------
-CURFS=""
-if command -v blkid >/dev/null 2>&1; then CURFS=$(blkid "$TARGET" 2>/dev/null); fi
-say "  filesystem  ${CURFS:-unknown (no blkid, or unformatted)}"
+# busybox blkid ignores its argument and lists every block device, so asking it
+# about one partition returned a loop device instead. Read the superblock
+# signature directly, which is unambiguous.
+CURFS=$(dd if="$TARGET" bs=512 count=1 2>/dev/null | strings 2>/dev/null | head -1)
+case "$CURFS" in
+  *EXFAT*)  CURFS="exFAT  (NOT supported by this kernel -- needs reformatting)" ;;
+  *FAT32*|*MSDOS*|*mkfs*) CURFS="FAT (vfat)" ;;
+  *NTFS*)   CURFS="NTFS  (not supported here)" ;;
+esac
+say "  filesystem  ${CURFS:-unknown or unformatted}"
+say "  kernel can mount: $(grep -v nodev /proc/filesystems 2>/dev/null | tr -d "\t" | tr "\n" " ")"
 
 if mount | grep -q "^$TARGET "; then
   say "  currently mounted at $(mount | awk -v t="$TARGET" '$1==t{print $3; exit}')"

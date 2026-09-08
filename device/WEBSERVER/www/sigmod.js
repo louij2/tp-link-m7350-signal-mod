@@ -159,11 +159,6 @@
     '.sigmod-key .sigmod-btn{padding:5px 10px;font-size:11px;flex:0 0 auto;}',
     '.sigmod-tile{cursor:grab;}',
     '@media(max-width:700px){.statusPage>*{grid-column:auto!important;}}',
-    '.sigmod-grip{position:absolute;right:2px;bottom:2px;width:16px;height:16px;cursor:nwse-resize;opacity:0;transition:opacity .12s;z-index:6;}',
-    '.sigmod-grip:before{content:"";position:absolute;right:3px;bottom:3px;width:8px;height:8px;border-right:2px solid #4b5563;border-bottom:2px solid #4b5563;}',
-    '.sigmod-tile:hover .sigmod-grip{opacity:1;}',
-    '.sigmod-grip:hover:before{border-color:#38bdf8;}',
-    '.sigmod-resizing{outline:1px solid #38bdf8!important;user-select:none;}',
 
     '.sigmod-tile:active{cursor:grabbing;}',
     '.sigmod-drag{opacity:.35;}',
@@ -874,90 +869,18 @@
     { k: 'about',  sel: '#sigmodAbout' }
   ];
   var ORDER_KEY = 'sigmodTileOrder';
-  var tileW = {};   // key -> column span (integer)
-  var tileH = {};   // key -> pixel min-height, or undefined for automatic
+  // Reordering only, GitHub-pins style: drag a card, drop it where you want it.
+  // There was a corner-grip resize here; it was fiddly, and equal cards that
+  // simply reflow read better than a grid of hand-tuned boxes.
+  var tileW = {};   // kept so old saved layouts with :width still parse
 
-  function gridInfo(host) {
-    var cs = getComputedStyle(host);
-    var tracks = cs.gridTemplateColumns.split(' ').filter(function (x) { return x; });
-    var gap = parseFloat(cs.columnGap) || 12;
-    var tw = tracks.length ? parseFloat(tracks[0]) : 300;
-    return { n: tracks.length || 1, gap: gap, tw: tw };
-  }
-
-  function applySize(el, k) {
-    var w = tileW[k], h = tileH[k];
-    el.style.gridColumn = (w && w > 1) ? ('span ' + w) : '';
-    el.style.minHeight = h ? (h + 'px') : '';
-  }
-
-  function encodeLayout(keys) {
-    return keys.map(function (k) {
-      var w = tileW[k] || 1, h = tileH[k];
-      if (h) return k + ':' + w + ':' + h;
-      if (w > 1) return k + ':' + w;
-      return k;
-    }).join(',');
-  }
+  function encodeLayout(keys) { return keys.join(','); }
 
   function decodeLayout(str) {
-    var keys = [];
-    (str || '').split(',').forEach(function (part) {
-      if (!part) return;
-      var b = part.split(':');
-      keys.push(b[0]);
-      if (b[1]) { var w = parseInt(b[1], 10); if (w >= 1 && w <= 9) tileW[b[0]] = w; }
-      if (b[2]) { var h = parseInt(b[2], 10); if (h >= 80 && h <= 4000) tileH[b[0]] = h; }
-    });
-    return keys;
-  }
-
-  // A grip in the bottom-right corner. Dragging it sets how many grid columns
-  // the card spans and its minimum height. Pointer events rather than HTML5
-  // drag, so it also works by touch, and the card's own drag is disabled while
-  // resizing so the two gestures cannot fight.
-  function addGrip(el, key) {
-    if (el.querySelector('.sigmod-grip')) return;
-    var g = document.createElement('span');
-    g.className = 'sigmod-grip';
-    g.title = 'Drag to resize';
-    g.setAttribute('draggable', 'false');
-    el.appendChild(g);
-
-    var host = null, info = null, startH = 0;
-    function move(e) {
-      if (!host) return;
-      var r = el.getBoundingClientRect();
-      var want = Math.round((e.clientX - r.left + info.gap) / (info.tw + info.gap));
-      if (want < 1) want = 1;
-      if (want > info.n) want = info.n;
-      tileW[key] = want;
-      var h = Math.round(e.clientY - r.top);
-      tileH[key] = (h > 120) ? h : undefined;
-      applySize(el, key);
-      e.preventDefault();
-    }
-    function up() {
-      if (!host) return;
-      document.removeEventListener('pointermove', move, true);
-      document.removeEventListener('pointerup', up, true);
-      el.setAttribute('draggable', 'true');
-      el.classList.remove('sigmod-resizing');
-      saveOrder(currentOrder(host));
-      host = null;
-    }
-    g.addEventListener('pointerdown', function (e) {
-      host = document.querySelector('.statusPage');
-      if (!host) return;
-      info = gridInfo(host);
-      startH = el.getBoundingClientRect().height;
-      el.setAttribute('draggable', 'false');   // stop the reorder drag firing
-      el.classList.add('sigmod-resizing');
-      document.addEventListener('pointermove', move, true);
-      document.addEventListener('pointerup', up, true);
-      e.preventDefault();
-      e.stopPropagation();
-    }, false);
+    // Tolerates the older "name:width:height" form so an existing saved layout
+    // still loads; the sizes are simply dropped.
+    return (str || '').split(',').map(function (p) { return p.split(':')[0]; })
+                      .filter(function (k) { return k; });
   }
 
   // The layout lives on the ROUTER, so it follows the device rather than
@@ -1037,14 +960,11 @@
     }
     if (ok && currentOrder(host).join(',') !== live.map(function (x) { return x.k; }).join(',')) ok = false;
     if (ok) {
-      live.forEach(function (x) { addGrip(x.el, x.k); applySize(x.el, x.k); });
       return;
     }
 
     live.forEach(function (x) {
       if (!x.el.getAttribute('data-tile')) { x.el.setAttribute('data-tile', x.k); wireTile(x.el); }
-      addGrip(x.el, x.k);
-      applySize(x.el, x.k);
       host.appendChild(x.el);   // appendChild moves an existing node
     });
   }
@@ -1085,8 +1005,6 @@
   function resetTileOrder() {
     serverOrder = null;
     try { localStorage.removeItem(ORDER_KEY); } catch (e) {}
-    tileW = {}; tileH = {};
-    TILES.forEach(function (t) { var el = tileEl(t); if (el) { el.style.gridColumn = ''; el.style.minHeight = ''; } });
     api('POST', CGI_TILES, TILES.map(function (t) { return t.k; }).join(','), function () {});
     var host = document.querySelector('.statusPage');
     if (!host) return;

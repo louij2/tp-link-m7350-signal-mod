@@ -543,8 +543,23 @@
   function refreshCtlState() {
     var x = new XMLHttpRequest();
     x.onload = function () {
+      var d;
       try {
-        var d = JSON.parse(x.responseText);
+        d = JSON.parse(x.responseText);
+      } catch (e) {
+        // A malformed body used to blank every field below it in silence.
+        // Say so, so the next time this breaks it is one console line away.
+        if (window.console) console.warn('sigmod: sysinfo returned unparseable JSON', x.responseText);
+        return;
+      }
+      // Each group is guarded on its own. Previously one throw anywhere took
+      // out every field after it, which is how the Hardware card went blank.
+      var step = function (fn) {
+        try { fn(); } catch (e) {
+          if (window.console) console.warn('sigmod: sysinfo update step failed', e);
+        }
+      };
+      step(function () {
         setPill('pillTtl', d.ttl);
         setPill('pillAdb', d.adb);
         setPill('pillFtp', d.ftp);
@@ -560,7 +575,8 @@
         var t = document.getElementById('spTemp'); if (t && d.temp) t.textContent = d.temp + ' °C';
         var bt = document.getElementById('spBatt');
         if (bt && d.battery) bt.textContent = d.battery + '%' + (d.charging === '1' ? ' ⚡' : '');
-
+      });
+      step(function () {
         var mb = function (kb) { var n = parseFloat(kb); return isNaN(n) ? null : (n / 1024); };
         var setx = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
         setx('hwCpu',  d.cpu ? d.cpu + '%' : '—');
@@ -575,7 +591,7 @@
         setx('abRoam', d.roaming === '1' ? ('allowed' + (d.roamstatus === '1' ? ' · roaming now' : '')) : 'blocked');
         setx('hwSd',   (d.sd || '—') + (d.sddays && d.sddays !== '0' ? ' · ' + d.sddays + 'd history' : ''));
         setx('hwTemp', d.temp ? d.temp + ' °C' : '—');
-      } catch (e) {}
+      });
     };
     x.open('GET', CGI_SYS + '?t=' + (new Date()).getTime(), true);
     x.send();

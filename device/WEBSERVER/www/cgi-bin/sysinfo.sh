@@ -28,23 +28,36 @@ APNIDX=$(uci get isp_profile.profile_isp_data.isp_index 2>/dev/null); [ -n "$APN
 APN=$(uci get "isp_profile.profile_isp_data_$APNIDX.apn_name_v4" 2>/dev/null)
 
 # ---- CPU utilisation ------------------------------------------------------
-# /proc/stat is cumulative, so a single read says nothing. Keep the previous
-# sample in tmpfs and report the delta since the last poll; the panel polls
-# every few seconds, which is a sensible window.
+# /proc/stat is cumulative, so a single read says nothing. Normally we diff
+# against the previous poll, which is free. But on the first call after boot
+# there is no previous sample, and two calls inside the same jiffy give a zero
+# window -- both used to render the card blank. Fall back to sampling twice
+# in-script so this always returns a number.
+cpu_sample() {
+  awk '/^cpu /{idle=$5+$6; tot=0; for(i=2;i<=NF;i++) tot+=$i; print tot" "idle}' /proc/stat 2>/dev/null
+}
+cpu_pct() {
+  awk -v c="$1" -v p="$2" 'BEGIN{
+    split(c,a," "); split(p,b," ");
+    dt=a[1]-b[1]; di=a[2]-b[2];
+    if (dt>0) { u=(dt-di)*100/dt; if(u<0)u=0; if(u>100)u=100; printf "%.0f", u }
+  }'
+}
+
 CPU=""
-CUR=$(awk '/^cpu /{idle=$5+$6; tot=0; for(i=2;i<=NF;i++) tot+=$i; print tot" "idle}' /proc/stat 2>/dev/null)
+CUR=$(cpu_sample)
 PREVF=/tmp/.sigmod_cpu
 if [ -n "$CUR" ]; then
-  if [ -f "$PREVF" ]; then
-    PREV=$(cat "$PREVF" 2>/dev/null)
-    CPU=$(awk -v c="$CUR" -v p="$PREV" 'BEGIN{
-      split(c,a," "); split(p,b," ");
-      dt=a[1]-b[1]; di=a[2]-b[2];
-      if (dt>0) { u=(dt-di)*100/dt; if(u<0)u=0; if(u>100)u=100; printf "%.0f", u }
-    }')
+  [ -f "$PREVF" ] && CPU=$(cpu_pct "$CUR" "$(cat "$PREVF" 2>/dev/null)")
+  if [ -z "$CPU" ]; then
+    sleep 0.3
+    CUR2=$(cpu_sample)
+    CPU=$(cpu_pct "$CUR2" "$CUR")
+    [ -n "$CUR2" ] && CUR=$CUR2
   fi
   printf '%s' "$CUR" > "$PREVF" 2>/dev/null
 fi
+[ -n "$CPU" ] || CPU=0
 
 # ---- swap + storage -------------------------------------------------------
 SWT=$(grep -m1 SwapTotal /proc/meminfo 2>/dev/null | tr -dc '0-9')

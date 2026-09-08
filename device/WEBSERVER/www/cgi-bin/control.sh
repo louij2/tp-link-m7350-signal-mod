@@ -23,7 +23,7 @@ A=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*action=\([a-zA-Z_]*\).*/\1/p')
 # --- Auth gate (before any headers are emitted) ---------------------------
 PWFILE=/etc/signalmod.pw
 case "$A" in
-  *_on|*_off|reboot|setpw)
+  *_on|*_off|reboot|setpw|setapn)
     if [ ! -s "$PWFILE" ]; then
       printf 'Status: 503 Service Unavailable\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n{"error":"no control password set: create /etc/signalmod.pw (chmod 600) over ADB or SSH first"}'
       exit 0
@@ -122,6 +122,48 @@ case "$A" in
   saver_on)     touch /etc/signalmod_saver 2>/dev/null; printf '{"ok":true,"saver":"%s"}' "$(saver_state)" ;;
   saver_off)    rm -f /etc/signalmod_saver 2>/dev/null; printf '{"ok":true,"saver":"%s"}' "$(saver_state)" ;;
   saver_status) printf '{"saver":"%s"}' "$(saver_state)" ;;
+
+  # Data roaming. A travel eSIM roams by definition -- its home network is not
+  # the one it attaches to -- so with this off the modem registers, shows full
+  # signal, and silently refuses to pass data. Both keys are set together
+  # because the firmware consults them separately.
+  roaming_on)
+    uci set network_status.network_status_data.roam_switch=1
+    uci set network_status.network_status_data.connect_when_roam=1
+    uci commit network_status
+    printf '{"ok":true,"roaming":"on"}'
+    ;;
+  roaming_off)
+    uci set network_status.network_status_data.roam_switch=0
+    uci set network_status.network_status_data.connect_when_roam=0
+    uci commit network_status
+    printf '{"ok":true,"roaming":"off"}'
+    ;;
+  roaming_status)
+    printf '{"roaming":"%s"}' "$([ "$(uci get network_status.network_status_data.roam_switch 2>/dev/null)" = 1 ] && echo on || echo off)"
+    ;;
+
+  # Set the APN on the active profile. Body, not query string, so it stays out
+  # of the web server log. Travel eSIMs need the provider's own APN; the one the
+  # modem picks automatically is the underlying carrier's and often carries no data.
+  setapn)
+    len="${CONTENT_LENGTH:-0}"
+    case "$len" in ''|*[!0-9]*) len=0 ;; esac
+    if [ "$len" -lt 1 ] || [ "$len" -gt 100 ]; then
+      printf '{"error":"no APN in request body"}'
+    else
+      NEW=$(dd bs=1 count="$len" 2>/dev/null | tr -d '\r\n ')
+      if ! echo "$NEW" | grep -qE '^[A-Za-z0-9._-]{1,64}$'; then
+        printf '{"error":"rejected: an APN is letters, digits, dot, dash, underscore"}'
+      else
+        IDX=$(uci get isp_profile.profile_isp_data.isp_index 2>/dev/null); [ -n "$IDX" ] || IDX=1
+        OLD=$(uci get "isp_profile.profile_isp_data_$IDX.apn_name_v4" 2>/dev/null)
+        uci set "isp_profile.profile_isp_data_$IDX.apn_name_v4=$NEW"
+        uci commit isp_profile
+        printf '{"ok":true,"apn":"%s","was":"%s","profile":"%s"}' "$NEW" "$OLD" "$IDX"
+      fi
+    fi
+    ;;
 
   # Change the mod control password. The new value is read from the POST BODY,
   # never the query string, so it does not end up in the web server's log or in

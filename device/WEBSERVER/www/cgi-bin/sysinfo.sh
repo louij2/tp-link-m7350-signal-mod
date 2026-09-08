@@ -22,6 +22,10 @@ if netstat -ltn 2>/dev/null | grep -q ':22 '; then SSH=on; else SSH=off; fi
 BATT=$(uci get battery.battery_mgr.power_level 2>/dev/null)
 CHG=$(uci get battery.battery_mgr.is_charging 2>/dev/null)
 WIFI=$(ubus call wlan_object wlan_get_switch 2>/dev/null | sed -n 's/.*"wlan": *"\([a-z]*\)".*/\1/p')
+ROAM=$(uci get network_status.network_status_data.roam_switch 2>/dev/null)
+ROAMST=$(uci get network_status.network_status_data.roam_status 2>/dev/null)
+APNIDX=$(uci get isp_profile.profile_isp_data.isp_index 2>/dev/null); [ -n "$APNIDX" ] || APNIDX=1
+APN=$(uci get "isp_profile.profile_isp_data_$APNIDX.apn_name_v4" 2>/dev/null)
 
 # ---- CPU utilisation ------------------------------------------------------
 # /proc/stat is cumulative, so a single read says nothing. Keep the previous
@@ -73,4 +77,4 @@ if [ -d /sys/class/mmc_host/mmc0 ]; then
 fi
 
 printf '{"uptime":"%s","temp":"%s","load":"%s","memtotal":"%s","memfree":"%s","wan":"%s","ttl":"%s","adb":"%s","ftp":"%s","telnet":"%s","ssh":"%s","battery":"%s","charging":"%s","wifi":"%s","cpu":"%s","swaptotal":"%s","swapfree":"%s","rootfree":"%s","rootpct":"%s","usrfree":"%s","usrpct":"%s","sd":"%s","saver":"%s"}' \
-  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG" "$WIFI" "$CPU" "$SWT" "$SWF" "$ROOTF" "$ROOTP" "$USRF" "$USRP" "$SD" "$SDDAYS" "$SAVER"
+  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG" "$WIFI" "$CPU" "$SWT" "$SWF" "$ROOTF" "$ROOTP" "$USRF" "$USRP" "$SD" "$SDDAYS" "$ROAM" "$ROAMST" "$APN" "$APNIDX" "$SAVER"

@@ -397,6 +397,9 @@
           'Telnet <span class="sigmod-pill" id="pillTelnet">--</span></span>' +
         '<span class="sigmod-btn" id="btnSaver">' + svg('globe', 16) +
           'Data saver <span class="sigmod-pill" id="pillSaver">--</span></span>' +
+        '<span class="sigmod-btn" id="btnRoam">' + svg('globe', 16) +
+          'Roaming <span class="sigmod-pill" id="pillRoam">--</span></span>' +
+        '<span class="sigmod-btn" id="btnApn">' + svg('signal', 16) + 'APN</span>' +
         '<span class="sigmod-btn danger" id="btnReboot">' + svg('reboot', 16) + 'Reboot</span>' +
         '<span class="sigmod-btn" id="btnResetTiles">' + svg('advanced', 16) + 'Reset layout</span>' +
       '</div>' +
@@ -423,6 +426,7 @@
         stat('globe', 'Operator', 'abOper') +
         stat('advanced', 'Network Mode', 'abNet') +
         stat('signal', 'APN', 'abApn') +
+        stat('globe', 'Roaming', 'abRoam') +
         stat('signal', 'IMEI', 'abImei') +
         stat('usb', 'IMSI', 'abImsi') +
         stat('sms', 'SIM Number', 'abSim') +
@@ -551,6 +555,10 @@
         setPill('pillFtp', d.ftp);
         setPill('pillTelnet', d.telnet);
         setPill('pillWifi', d.wifi);
+        setPill('pillRoam', d.roaming === '1' ? 'on' : (d.roaming === '0' ? 'off' : undefined));
+        window.__sigmodApn = d.apn || '';
+        var ab = document.getElementById('btnApn');
+        if (ab && d.apn) ab.title = 'APN: ' + d.apn + (d.apnidx ? '  (profile ' + d.apnidx + ')' : '');
         setPill('pillSaver', d.saver);
         if (d.saver) { saverOn = (d.saver === 'on'); applySaverCadence(); }
         var w = document.getElementById('spWan'); if (w) w.textContent = d.wan || '--';
@@ -569,6 +577,7 @@
         var rf = mb(d.rootfree), uf = mb(d.usrfree);
         setx('hwRoot', rf !== null ? (rf.toFixed(1) + ' MB free' + (d.rootpct ? ' · ' + d.rootpct + '%' : '')) : '—');
         setx('hwUsr',  uf !== null ? (uf.toFixed(1) + ' MB free' + (d.usrpct ? ' · ' + d.usrpct + '%' : '')) : '—');
+        setx('abRoam', d.roaming === '1' ? ('allowed' + (d.roamstatus === '1' ? ' · roaming now' : '')) : 'blocked');
         setx('hwSd',   (d.sd || '—') + (d.sddays && d.sddays !== '0' ? ' · ' + d.sddays + 'd history' : ''));
         setx('hwTemp', d.temp ? d.temp + ' °C' : '—');
       } catch (e) {}
@@ -732,6 +741,26 @@
     };
     svc('btnFtp', 'pillFtp', 'FTP');
     svc('btnTelnet', 'pillTelnet', 'Telnet');
+
+    var roam = document.getElementById('btnRoam');
+    if (roam) roam.onclick = function () {
+      var on = document.getElementById('pillRoam').textContent === 'ON';
+      if (!on && !window.confirm('Allow data while roaming?\n\nNeeded for a travel eSIM, which roams by definition. On a normal SIM abroad this can cost real money.')) return;
+      ctl(on ? 'roaming_off' : 'roaming_on', function (d) { setPill('pillRoam', d.roaming || (on ? 'off' : 'on')); });
+    };
+
+    var apnb = document.getElementById('btnApn');
+    if (apnb) apnb.onclick = function () {
+      var cur = (window.__sigmodApn || '');
+      var v = window.prompt('APN for the active profile.\n\nA travel eSIM needs its provider\'s APN, not the one the modem picks automatically.', cur);
+      if (v === null) return;
+      v = v.replace(/\s+/g, '');
+      if (!v) return;
+      api('POST', CGI_CTL + '?action=setapn', v, function (d) {
+        if (d && d.ok) window.alert('APN set to ' + d.apn + ' (was ' + (d.was || 'unset') + ').\n\nReconnect or reboot for it to take effect.');
+        else window.alert((d && d.error) || 'Could not set the APN.');
+      });
+    };
 
     var wifi = document.getElementById('btnWifi');
     var sv = document.getElementById('btnSaver');

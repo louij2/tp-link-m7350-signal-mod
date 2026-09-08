@@ -13,6 +13,7 @@
 # Usage:  scripts/build-ssh.sh [path-to-your-ssh-pubkey]
 #   default pubkey: ~/.ssh/id_ed25519.pub
 set -euo pipefail
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
 ADB="${ADB:-adb}"
 PUBKEY="${1:-$HOME/.ssh/id_ed25519.pub}"
@@ -59,15 +60,24 @@ say "Generating host keys (once) + installing your public key..."
 "$ADB" shell "cat > /root/.ssh/authorized_keys" < "$PUBKEY"
 "$ADB" shell "chmod 600 /root/.ssh/authorized_keys"
 
-say "Starting dropbear on $LAN_IP:22 (key-only, no password, LAN only)..."
-# -s: disable password logins  -g: disable password logins for root  -p bind LAN only
-"$ADB" shell "pkill dropbear 2>/dev/null; sleep 1; setsid /usr/sbin/dropbear -s -g -p $LAN_IP:22 </dev/null >/dev/null 2>&1 &"
-sleep 2
-"$ADB" shell "netstat -ltn 2>/dev/null | grep ':22 ' && echo 'dropbear listening'" || echo "not listening yet"
+# Boot persistence: a real init script, linked late enough that br0 has an
+# address. Without this SSH vanishes on every reboot -- the earlier approach
+# (a sed into signal_poll's init script) never survived a firmware-side change
+# to that file, and left no trace when it silently did nothing.
+say "Installing init script and boot link..."
+"$ADB" push "$REPO/device/etc/init.d/dropbear" /etc/init.d/dropbear
+"$ADB" shell "chmod 755 /etc/init.d/dropbear
+  rm -f /etc/rc5.d/S43dropbear
+  ln -sf /etc/init.d/dropbear /etc/rc5.d/S99dropbear"
+"$ADB" shell "[ -x /etc/init.d/dropbear ] && [ -L /etc/rc5.d/S99dropbear ] && echo 'init installed'" \
+  | grep -q 'init installed' || { echo "Init script did not install"; exit 1; }
 
-# Boot persistence: append to the signal_poll init start hook.
-say "Adding boot persistence..."
-"$ADB" shell "grep -q dropbear /etc/init.d/signal_poll 2>/dev/null || sed -i 's#^    echo \"done\"#    [ -x /usr/sbin/dropbear ] \\&\\& ! netstat -ltn 2>/dev/null | grep -q \":22 \" \\&\\& setsid /usr/sbin/dropbear -s -g -p $LAN_IP:22 </dev/null >/dev/null 2>\\&1 \\&\n    echo \"done\"#' /etc/init.d/signal_poll"
+say "Starting dropbear on $LAN_IP:22 (key-only, no password, LAN only)..."
+"$ADB" shell "/etc/init.d/dropbear restart >/dev/null 2>&1 &"
+sleep 3
+"$ADB" shell "netstat -ltn 2>/dev/null | grep ':22 '" | grep -q ':22 ' \
+  || { echo "dropbear is not listening on port 22"; exit 1; }
+say "dropbear listening on $LAN_IP:22"
 
 say "Done. Connect with:  ssh root@$LAN_IP"
 say "(Key-only, root, LAN-bound. To stop: adb shell pkill dropbear)"

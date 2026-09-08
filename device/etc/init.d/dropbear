@@ -25,7 +25,15 @@ running() {
 start() {
   [ -x "$DROPBEAR" ] || { echo "dropbear not installed"; exit 1; }
   running && { echo "dropbear already running"; return 0; }
-  LAN=$(ip -4 addr show br0 2>/dev/null | sed -n 's/.*inet \([0-9.]*\).*/\1/p' | head -1)
+  # At boot this can run before br0 has an address, in which case binding to the
+  # LAN IP fails silently and SSH is simply absent. Wait for it rather than
+  # binding to 0.0.0.0, which would expose it WAN-side.
+  i=0
+  while [ "$i" -lt 30 ]; do
+    LAN=$(ip -4 addr show br0 2>/dev/null | sed -n 's/.*inet \([0-9.]*\).*/\1/p' | head -1)
+    [ -n "$LAN" ] && break
+    i=$((i + 1)); sleep 1
+  done
   [ -n "$LAN" ] || LAN=192.168.2.1
   # -s no password logins, -g no root password login: key-only, both belt and braces
   "$DROPBEAR" -r "$KEYDIR/dropbear_ed25519_host_key" -r "$KEYDIR/dropbear_rsa_host_key" \
@@ -45,7 +53,7 @@ stop() {
 }
 
 case "$1" in
-  start)   start ;;
+  start)   start & ;;
   stop)    stop ;;
   restart) stop; sleep 1; start ;;
   status)  running && echo "running" || echo "not running" ;;

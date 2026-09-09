@@ -28,7 +28,16 @@ All notable changes to the M7350 Extreme mod are documented here.
   drops a marker to request a refresh.
   - `FPLMN` is worth the trip on its own: it lists the networks the card itself
     has marked forbidden, which is exactly the failure that stopped the Nomad
-    eSIM passing data.
+    eSIM passing data. On the card here it reads **234-30 (EE)**.
+  - Two decoders were wrong and only the real card showed it. `EF_IMSI` starts
+    with a length byte and its second byte's low nibble is a parity flag, not a
+    digit; dropping two bytes and swapping the rest returned `08090222141697`
+    for a real `208090222141697`. And the three `*wAcT` selectors hold **5-byte**
+    records, a PLMN plus a 2-byte access-technology mask, so reading them at
+    `FPLMN`'s 3-byte stride walked off the record boundary and produced
+    confident nonsense (`000-FF0, FFF-00, ...`) instead of failing. Both are
+    covered by decoder tests now, including a 3-digit MNC, which the old
+    strip-the-Fs approach would also have got wrong.
 
 ### Known limitation, stated in the UI rather than hidden
 - **eUICC profile listing and switching are not possible on this device.** They

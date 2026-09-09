@@ -115,6 +115,27 @@ for c in "AT+CSIM=?" "AT+CGLA=?" "AT+CCHO=?"; do
   esac
 done
 
+# --- what kind of card is this ----------------------------------------------
+# There is no reliable eUICC detector here, and the UI says "likely" rather than
+# "yes" because of it. What was checked and rejected, so nobody re-treads it:
+#   * EF_DIR (2F00) lists applications, but ISD-R is selected by AID directly and
+#     never appears there. On the card here it holds one USIM app and nothing else.
+#   * AT^CARDMODE answers 1 for SIM and 2 for USIM. It says nothing about eUICC.
+#   * uci sim.common_state.card_type is the same SIM/USIM distinction.
+#   * The definitive test, selecting ISD-R, needs AT+CCHO/AT+CGLA, which error.
+# What IS measurable is the travel-profile signature: an eSIM you bought for
+# travel has a home network in one country and is roaming in another, and it
+# carries no service provider name. A physical operator SIM in its home country
+# has neither property. That is an inference, and it is labelled as one.
+CARDMODE=$(at_raw "AT^CARDMODE" | sed -n 's/.*\^CARDMODE: *\([0-9]*\).*/\1/p' | head -1)
+case "$CARDMODE" in
+  1) CARDKIND="SIM" ;;
+  2) CARDKIND="USIM" ;;
+  *) CARDKIND="unknown" ;;
+esac
+
+EFDIR=$(at_raw "AT+CRSM=178,12032,1,4,32" | sed -n 's/.*+CRSM: 144,0,"\([0-9A-Fa-f]*\)".*/\1/p' | head -1)
+
 # --- the files ---------------------------------------------------------------
 # name, hex id (for display), decimal id (for CRSM), length, kind
 FILES="
@@ -132,9 +153,36 @@ GID1:6F3E:28478:8:hex
 GID2:6F3F:28479:8:hex
 "
 
+# --- the travel-profile inference -------------------------------------------
+IMSI_RAW=$(crsm 28423 9)
+IMSI_VAL=$(imsi_decode "$IMSI_RAW")
+SPN_RAW=$(crsm 28486 17)
+SPN_VAL=$(hex_txt "$(printf '%s' "$SPN_RAW" | cut -c3-)")
+
+HOME_MCC=$(printf '%s' "$IMSI_VAL" | cut -c1-3)
+SERV_MCC=$(uci get isp_profile.profile_isp_data.mcc 2>/dev/null)
+SERV_MNC=$(uci get isp_profile.profile_isp_data.mnc 2>/dev/null)
+HOME_PLMN="$HOME_MCC"
+SERVING="$SERV_MCC-$SERV_MNC"
+
+ESIM=unknown
+ESIM_WHY="cannot be determined: this firmware gives no APDU path to ISD-R, and no readable file distinguishes a eUICC from a plastic SIM"
+if [ "$APDU" = yes ]; then
+  ESIM=check
+  ESIM_WHY="the modem reports APDU support, so ISD-R may be selectable; this build does not try"
+elif [ -n "$HOME_MCC" ] && [ -n "$SERV_MCC" ] && [ "$HOME_MCC" != "$SERV_MCC" ] && [ -z "$SPN_VAL" ]; then
+  ESIM=likely
+  ESIM_WHY="home network is MCC $HOME_MCC and it is registered on $SERV_MCC with no service provider name, which is the travel-eSIM signature rather than a home operator SIM"
+elif [ -n "$HOME_MCC" ] && [ "$HOME_MCC" = "$SERV_MCC" ]; then
+  ESIM=unlikely
+  ESIM_WHY="home network MCC $HOME_MCC matches the serving network, which is how a normal operator SIM behaves"
+fi
+
 {
-  printf '{"apdu_access":"%s","channel":"%s","scanned":"%s","files":[' \
-    "$APDU" "$(esc "$DEV")" "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null)"
+  printf '{"apdu_access":"%s","card_kind":"%s","efdir":"%s","esim":"%s","esim_reason":"%s","home":"%s","serving":"%s","channel":"%s","scanned":"%s","files":[' \
+    "$APDU" "$CARDKIND" "$(esc "$EFDIR")" "$ESIM" "$(esc "$ESIM_WHY")" \
+    "$(esc "$HOME_PLMN")" "$(esc "$SERVING")" \
+    "$(esc "$DEV")" "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null)"
   first=1
   echo "$FILES" | while IFS=: read -r name hexid decid len kind; do
     [ -n "$name" ] || continue

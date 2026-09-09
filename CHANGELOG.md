@@ -2,7 +2,8 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
-## [Unreleased]
+## [2.7.0] — 2026-09-09  ·  **in-browser Explorer: SD card, device and SIM**
+
 
 ### Added
 - **In-browser Explorer**, one overlay covering the SD card, the device
@@ -20,6 +21,23 @@ All notable changes to the M7350 Extreme mod are documented here.
     `?auth=` in the URL, which the web server would write straight into its log.
   - Capped at 8 MB per file, which covers any history CSV without letting a
     browser tab try to pull a whole card through a 38 BogoMIPS CPU.
+- **An eSIM status line, with its reasoning shown.** The SIM tab now leads with
+  eSIM (eUICC) yes / likely / no / cannot tell, the card type, the card's home
+  MCC against the network it is registered on, and whether profile management is
+  reachable.
+  - It says **likely**, not yes, and that is deliberate. There is no reliable
+    eUICC detector on this hardware. What was checked and rejected: `EF_DIR`
+    lists applications but ISD-R is selected by AID and never appears there (the
+    card here holds one USIM app); `AT^CARDMODE` answers 1 for SIM and 2 for
+    USIM and says nothing about eUICC; `uci sim.common_state.card_type` is the
+    same distinction. The definitive test, selecting ISD-R, needs `AT+CCHO` and
+    `AT+CGLA`, which error.
+  - What **is** measurable is the travel-profile signature: a card whose home
+    network is in one country, registered in another, carrying no service
+    provider name. A home operator SIM has neither property. On the card here
+    that reads home **MCC 208 (France)** on **234-15 (Vodafone UK)** with an
+    empty SPN, so: likely. The inference is labelled as one rather than dressed
+    up as a fact.
 - **`files.sh`** and **`simfiles.sh`** CGIs, both fail-closed on auth.
 - **`sim_scan.sh`** reads the standard SIM elementary files (ICCID, IMSI, SPN,
   AD, FPLMN, the PLMN selectors, UST, GIDs) and caches them as JSON. It runs

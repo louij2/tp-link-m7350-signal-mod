@@ -1032,7 +1032,19 @@
                 'It writes this on its slow tick, so try again in a minute.</span></div>');
         return;
       }
-      var h = '<table class="sigmod-ef"><tr><th>File</th><th>ID</th><th>Value</th><th>Raw</th></tr>';
+      var badge = { yes: 'yes', likely: 'likely', unlikely: 'no', check: 'maybe' }[d.esim] || 'cannot tell';
+      var h = '<table class="sigmod-ef">' +
+        '<tr><td><b>eSIM (eUICC)</b></td><td class="mono"></td><td><b>' + esc(badge) + '</b></td>' +
+        '<td>' + esc(d.esim_reason || '') + '</td></tr>' +
+        '<tr><td>Card type</td><td class="mono"></td><td>' + esc(d.card_kind || '?') + '</td>' +
+        '<td>from AT^CARDMODE; this reports SIM vs USIM and says nothing about eUICC</td></tr>' +
+        '<tr><td>Home / serving</td><td class="mono"></td><td>' +
+        esc((d.home || '?') + ' on ' + (d.serving || '?')) + '</td>' +
+        '<td>MCC of the card\'s own IMSI against the network it is registered on</td></tr>' +
+        '<tr><td>Profile management</td><td class="mono"></td><td>' +
+        (d.apdu_access === 'yes' ? 'maybe' : 'unavailable') + '</td>' +
+        '<td>needs APDUs to ISD-R via AT+CSIM / AT+CCHO / AT+CGLA</td></tr>' +
+        '<tr><th>File</th><th>ID</th><th>Value</th><th>Raw</th></tr>';
       var f = d.files || [];
       for (var i = 0; i < f.length; i++) {
         var v = f[i].status === 'ok' ? (f[i].value || '(empty)') : 'not readable';

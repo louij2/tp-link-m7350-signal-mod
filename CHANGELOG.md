@@ -2,6 +2,52 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [Unreleased]
+
+### Added
+- **In-browser Explorer**, one overlay covering the SD card, the device
+  filesystem and the SIM. Opened from the Explorer button in Controls.
+  - **Read only, deliberately.** No rename, delete or upload. A browser tab is a
+    bad place to be one mis-click from removing a file on a device whose rootfs
+    is 87% full and whose recovery path is a USB cable.
+  - Directories sort first, then files, each alphabetically. busybox `ls` has no
+    `--group-directories-first` and its raw order is not useful to a human.
+  - Files holding credentials (`/etc/signalmod.pw`, `/etc/shadow`, host keys,
+    anything under `.ssh`, `authorized_keys`) are **listed but never served**.
+    Someone with the password can see they exist; handing back their contents
+    would turn one leaked password into permanent root.
+  - Downloads go through XHR with the password in an `X-Auth` header, not
+    `?auth=` in the URL, which the web server would write straight into its log.
+  - Capped at 8 MB per file, which covers any history CSV without letting a
+    browser tab try to pull a whole card through a 38 BogoMIPS CPU.
+- **`files.sh`** and **`simfiles.sh`** CGIs, both fail-closed on auth.
+- **`sim_scan.sh`** reads the standard SIM elementary files (ICCID, IMSI, SPN,
+  AD, FPLMN, the PLMN selectors, UST, GIDs) and caches them as JSON. It runs
+  **from the daemon, never from a CGI**: a CGI that opens `/dev/smd*` blocks and
+  takes lighttpd down with it, so `simfiles.sh` only ever reads the cache and
+  drops a marker to request a refresh.
+  - `FPLMN` is worth the trip on its own: it lists the networks the card itself
+    has marked forbidden, which is exactly the failure that stopped the Nomad
+    eSIM passing data.
+
+### Known limitation, stated in the UI rather than hidden
+- **eUICC profile listing and switching are not possible on this device.** They
+  need APDUs to the ISD-R applet (SGP.22 ES10c), which means `AT+CSIM`,
+  `AT+CCHO` and `AT+CGLA`. This firmware errors on all three, so there is no
+  path to the profile list, the EID, or enabling a profile. The elementary files
+  above are readable because `AT+CRSM` is a restricted command the modem runs on
+  your behalf, not a channel for arbitrary APDUs. `sim_scan.sh` probes for APDU
+  support and records the answer, so the panel states the reason from evidence
+  rather than asserting it. Profiles have to be managed from a phone or a PC/SC
+  reader.
+
+### Fixed
+- **`install.sh` had drifted and shipped an incomplete install.** It listed CGIs
+  one by one and had never gained `keys.sh`, `signal_hist.sh`, `tiles.sh` or
+  `sdcard.sh`, so a fresh install silently lacked SSH key management, the
+  sparkline history, saved tile order and the SD card endpoints. It is a loop
+  over the real set now.
+
 ## [2.6.3] — 2026-09-09  ·  **SD card verified on hardware**
 
 ### Fixed

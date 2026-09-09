@@ -33,6 +33,8 @@
   var CGI_KEYS   = '/cgi-bin/keys.sh';
   var CGI_HIST   = '/cgi-bin/signal_hist.sh';
   var CGI_TILES  = '/cgi-bin/tiles.sh';
+  var CGI_FILES  = '/cgi-bin/files.sh';
+  var CGI_SIMFILES = '/cgi-bin/simfiles.sh';
 
   // Custom device name (AirPort-style). Change this to rebrand the UI.
   var MODEL = 'M7350+ Extreme';
@@ -153,6 +155,33 @@
     '.sigmod-stat .k{display:flex;align-items:center;gap:7px;font-size:11px;color:#9aa4b2!important;}',
     '.sigmod-stat .v{font-size:14px;color:#e6edf3!important;margin-top:2px;overflow-wrap:break-word;font-variant-numeric:tabular-nums;}',
     '.sigmod-ctrls{display:flex;flex-wrap:wrap;gap:10px;}',
+    /* ---- Explorer overlay ------------------------------------------------
+     * A full-width overlay rather than a dashboard tile: a file browser in a
+     * 340px masonry column is unusable, and this is the one thing in the mod
+     * that genuinely wants the whole window. */
+    '.sigmod-ov{position:fixed!important;inset:0!important;z-index:99999!important;background:rgba(6,8,11,.82)!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:24px!important;}',
+    '.sigmod-ov-box{background:#171b21!important;border:1px solid #2a313b!important;border-radius:12px!important;width:min(1000px,100%)!important;max-height:100%!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;}',
+    '.sigmod-ov-hd{display:flex!important;align-items:center!important;gap:12px!important;padding:12px 16px!important;border-bottom:1px solid #2a313b!important;flex:0 0 auto!important;}',
+    '.sigmod-ov-hd h3{margin:0!important;font-size:13px!important;letter-spacing:.04em;text-transform:uppercase;color:#9aa4b2!important;font-weight:600!important;border:0!important;padding:0!important;}',
+    '.sigmod-ov-x{margin-left:auto!important;cursor:pointer!important;color:#9aa4b2!important;font-size:20px!important;line-height:1!important;padding:0 4px!important;}',
+    '.sigmod-ov-x:hover{color:#e6edf3!important;}',
+    '.sigmod-tabs{display:flex!important;gap:8px!important;padding:10px 16px 0!important;flex:0 0 auto!important;flex-wrap:wrap!important;}',
+    '.sigmod-tab{cursor:pointer!important;padding:6px 12px!important;border:1px solid #2a313b!important;border-radius:8px!important;font-size:12px!important;color:#9aa4b2!important;background:#11151a!important;}',
+    '.sigmod-tab.on{color:#e6edf3!important;border-color:#3fb950!important;}',
+    '.sigmod-crumb{padding:10px 16px!important;font-size:12px!important;color:#9aa4b2!important;word-break:break-all!important;flex:0 0 auto!important;}',
+    '.sigmod-fl{overflow:auto!important;flex:1 1 auto!important;padding:0 8px 12px!important;min-height:120px!important;}',
+    '.sigmod-fr{display:flex!important;align-items:center!important;gap:10px!important;padding:7px 8px!important;border-radius:6px!important;font-size:13px!important;color:#e6edf3!important;}',
+    '.sigmod-fr:hover{background:#1d232b!important;}',
+    '.sigmod-fr.click{cursor:pointer!important;}',
+    '.sigmod-fr .nm{flex:1 1 auto!important;word-break:break-all!important;}',
+    '.sigmod-fr .sz{color:#9aa4b2!important;font-size:11px!important;flex:0 0 auto!important;font-variant-numeric:tabular-nums;}',
+    '.sigmod-fr .ic{flex:0 0 auto!important;color:#9aa4b2!important;}',
+    '.sigmod-note{padding:10px 16px!important;font-size:11px!important;color:#9aa4b2!important;line-height:1.5!important;border-top:1px solid #2a313b!important;flex:0 0 auto!important;}',
+    '.sigmod-ef{width:100%!important;border-collapse:collapse!important;font-size:12px!important;}',
+    '.sigmod-ef td,.sigmod-ef th{padding:6px 8px!important;border-bottom:1px solid #232a33!important;text-align:left!important;vertical-align:top!important;}',
+    '.sigmod-ef th{color:#9aa4b2!important;font-weight:600!important;font-size:11px!important;text-transform:uppercase!important;letter-spacing:.04em!important;}',
+    '.sigmod-ef .mono{font-family:ui-monospace,Menlo,Consolas,monospace!important;color:#9aa4b2!important;word-break:break-all!important;}',
+    '@media(max-width:700px){.sigmod-ov{padding:0!important;}.sigmod-ov-box{border-radius:0!important;height:100%!important;}}',
     '.sigmod-btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2a313b;border-radius:8px;padding:9px 14px;font-size:13px;background:#1d232c!important;color:#e6edf3!important;user-select:none;}',
     '.sigmod-btn:hover{border-color:#3a4552;}',
     '.sigmod-btn.on{border-color:#34d399;color:#34d399!important;}',
@@ -404,6 +433,7 @@
           'Roaming <span class="sigmod-pill" id="pillRoam">--</span></span>' +
         '<span class="sigmod-btn" id="btnApn">' + svg('signal', 16) + 'APN</span>' +
         '<span class="sigmod-btn danger" id="btnReboot">' + svg('reboot', 16) + 'Reboot</span>' +
+        '<span class="sigmod-btn" id="btnFiles">' + svg('usb', 16) + 'Explorer</span>' +
         '<span class="sigmod-btn" id="btnResetTiles">' + svg('advanced', 16) + 'Reset layout</span>' +
       '</div>' +
       '<div class="content-label" style="margin-top:8px;font-size:11px;">' +
@@ -483,6 +513,7 @@
     }
     wireControls();
     var rt = document.getElementById('btnResetTiles'); if (rt) rt.onclick = resetTileOrder;
+    var fb = document.getElementById('btnFiles'); if (fb) fb.onclick = openExplorer;
     var ak = document.getElementById('btnAddKey');   if (ak) ak.onclick = addKey;
     var cp = document.getElementById('btnChangePw'); if (cp) cp.onclick = changePw;
     refreshCtlState();
@@ -870,6 +901,204 @@
     } catch (e) {}
   }
 
+
+    /* ==================================================================== *
+   * Explorer: SD card, device filesystem and SIM, in one overlay         *
+   * ==================================================================== */
+  // Read only by design. No rename, delete or upload: a browser tab is a bad
+  // place to be one mis-click from removing a file on a device whose rootfs is
+  // 87% full and whose recovery path is a USB cable.
+  var EXP = { tab: 'sd', path: '/media/card' };
+
+  function expClose() {
+    var o = document.getElementById('sigmodOv');
+    if (o && o.parentNode) o.parentNode.removeChild(o);
+  }
+
+  function fmtSize(n) {
+    n = parseInt(n, 10);
+    if (isNaN(n)) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+    return (n / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function expBody(html) {
+    var b = document.getElementById('sigmodOvBody');
+    if (b) b.innerHTML = html;
+  }
+  function expCrumb(t) {
+    var c = document.getElementById('sigmodOvCrumb');
+    if (c) c.textContent = t;
+  }
+
+  // Download through XHR rather than a plain link. The CGI wants the password
+  // in an X-Auth header, and an <a href> cannot send one -- the alternative is
+  // ?auth= in the URL, which the web server would write straight into its log.
+  function expDownload(path, name) {
+    var x = new XMLHttpRequest();
+    x.responseType = 'blob';
+    x.onload = function () {
+      if (x.status !== 200) {
+        alert('Could not download: ' + (x.status === 403 ? 'not permitted' :
+              x.status === 413 ? 'file is larger than 8 MB' : 'error ' + x.status));
+        return;
+      }
+      var url = URL.createObjectURL(x.response);
+      var a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    };
+    x.onerror = function () { alert('Could not download: network error'); };
+    x.open('GET', CGI_FILES + '?op=get&path=' + encodeURIComponent(path) +
+           '&t=' + (new Date()).getTime(), true);
+    var pw = storedPw();
+    if (pw) x.setRequestHeader('X-Auth', pw);
+    x.send();
+  }
+
+  function expList(path) {
+    EXP.path = path;
+    expCrumb(path);
+    expBody('<div class="sigmod-fr"><span class="nm">Loading...</span></div>');
+    api('GET', CGI_FILES + '?op=list&path=' + encodeURIComponent(path), null, function (d, st) {
+      if (st === 403) { expBody('<div class="sigmod-fr"><span class="nm">Password needed.</span></div>'); return; }
+      if (!d || d.error) {
+        expBody('<div class="sigmod-fr"><span class="nm">' +
+                esc((d && d.error) || 'Could not read that directory') + '</span></div>');
+        return;
+      }
+      var h = '';
+      // Parent link, except at /
+      if (path !== '/') {
+        var up = path.replace(/\/[^\/]*$/, '') || '/';
+        h += '<div class="sigmod-fr click" data-dir="' + esc(up) + '">' +
+             '<span class="ic">' + svg('advanced', 14) + '</span>' +
+             '<span class="nm">..</span></div>';
+      }
+      var ents = d.entries || [];
+      // Directories first, then files, each alphabetical. ls order is not
+      // useful to a human and busybox ls has no --group-directories-first.
+      ents.sort(function (a, b) {
+        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+        return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+      });
+      if (!ents.length) h += '<div class="sigmod-fr"><span class="nm">Empty.</span></div>';
+      for (var i = 0; i < ents.length; i++) {
+        var e = ents[i];
+        var full = (path === '/' ? '' : path) + '/' + e.name;
+        if (e.type === 'dir') {
+          h += '<div class="sigmod-fr click" data-dir="' + esc(full) + '">' +
+               '<span class="ic">' + svg('usb', 14) + '</span>' +
+               '<span class="nm">' + esc(e.name) + '</span></div>';
+        } else if (e.secret) {
+          h += '<div class="sigmod-fr" title="Holds credentials, so it is listed but not served">' +
+               '<span class="ic">' + svg('lock', 14) + '</span>' +
+               '<span class="nm">' + esc(e.name) + '</span>' +
+               '<span class="sz">' + fmtSize(e.size) + ' · withheld</span></div>';
+        } else {
+          h += '<div class="sigmod-fr click" data-file="' + esc(full) + '" data-name="' + esc(e.name) + '">' +
+               '<span class="ic">' + svg('advanced', 14) + '</span>' +
+               '<span class="nm">' + esc(e.name) + '</span>' +
+               '<span class="sz">' + fmtSize(e.size) + '</span></div>';
+        }
+      }
+      expBody(h);
+      var b = document.getElementById('sigmodOvBody');
+      if (!b) return;
+      b.onclick = function (ev) {
+        var r = ev.target;
+        while (r && r !== b && !r.getAttribute) r = r.parentNode;
+        while (r && r !== b && !r.getAttribute('data-dir') && !r.getAttribute('data-file')) r = r.parentNode;
+        if (!r || r === b) return;
+        var dir = r.getAttribute('data-dir');
+        if (dir) { expList(dir); return; }
+        var f = r.getAttribute('data-file');
+        if (f) expDownload(f, r.getAttribute('data-name') || 'download');
+      };
+    });
+  }
+
+  function expSim(rescan) {
+    expCrumb('SIM elementary files');
+    expBody('<div class="sigmod-fr"><span class="nm">Reading the card...</span></div>');
+    api('GET', CGI_SIMFILES + (rescan ? '?op=rescan' : '?op=get'), null, function (d, st) {
+      if (st === 403) { expBody('<div class="sigmod-fr"><span class="nm">Password needed.</span></div>'); return; }
+      if (!d) { expBody('<div class="sigmod-fr"><span class="nm">Could not read the SIM cache.</span></div>'); return; }
+      if (d.pending) {
+        expBody('<div class="sigmod-fr"><span class="nm">The daemon has not scanned the card yet. ' +
+                'It writes this on its slow tick, so try again in a minute.</span></div>');
+        return;
+      }
+      var h = '<table class="sigmod-ef"><tr><th>File</th><th>ID</th><th>Value</th><th>Raw</th></tr>';
+      var f = d.files || [];
+      for (var i = 0; i < f.length; i++) {
+        var v = f[i].status === 'ok' ? (f[i].value || '(empty)') : 'not readable';
+        h += '<tr><td>' + esc(f[i].name) + '</td>' +
+             '<td class="mono">' + esc(f[i].id) + '</td>' +
+             '<td>' + esc(v) + '</td>' +
+             '<td class="mono">' + esc(f[i].hex || '') + '</td></tr>';
+      }
+      h += '</table>';
+      expBody(h);
+      var n = document.getElementById('sigmodOvNote');
+      if (n) {
+        n.innerHTML = d.apdu_access === 'yes'
+          ? 'This modem reports APDU support, so eUICC profile listing may be possible. It was not when this was written.'
+          : '<b>eUICC profile listing is not available on this device.</b> Listing or switching ' +
+            'profiles needs APDUs to the ISD-R applet (SGP.22 ES10c), which means AT+CSIM, AT+CCHO ' +
+            'and AT+CGLA. This firmware errors on all three, so there is no path to the profile ' +
+            'list, the EID, or enabling a profile. The files above are readable because AT+CRSM is ' +
+            'a restricted command the modem runs for you, not a channel for arbitrary APDUs. ' +
+            'Profiles have to be managed from a phone or a PC/SC reader.';
+      }
+    });
+  }
+
+  function expTab(tab) {
+    EXP.tab = tab;
+    var ts = document.querySelectorAll('#sigmodOv .sigmod-tab');
+    for (var i = 0; i < ts.length; i++) {
+      ts[i].className = 'sigmod-tab' + (ts[i].getAttribute('data-tab') === tab ? ' on' : '');
+    }
+    var n = document.getElementById('sigmodOvNote');
+    if (n) n.textContent = 'Read only. Files are served over the LAN only, and need the control password.';
+    if (tab === 'sim') expSim(false);
+    else if (tab === 'sd') expList('/media/card');
+    else expList('/');
+  }
+
+  function openExplorer() {
+    expClose();
+    var o = document.createElement('div');
+    o.id = 'sigmodOv';
+    o.className = 'sigmod-ov';
+    o.innerHTML =
+      '<div class="sigmod-ov-box">' +
+        '<div class="sigmod-ov-hd">' + svg('usb', 15) +
+          '<h3>Explorer</h3><span class="sigmod-ov-x" id="sigmodOvX">&times;</span>' +
+        '</div>' +
+        '<div class="sigmod-tabs">' +
+          '<span class="sigmod-tab" data-tab="sd">SD card</span>' +
+          '<span class="sigmod-tab" data-tab="dev">Device</span>' +
+          '<span class="sigmod-tab" data-tab="sim">SIM</span>' +
+        '</div>' +
+        '<div class="sigmod-crumb" id="sigmodOvCrumb"></div>' +
+        '<div class="sigmod-fl" id="sigmodOvBody"></div>' +
+        '<div class="sigmod-note" id="sigmodOvNote"></div>' +
+      '</div>';
+    document.body.appendChild(o);
+    document.getElementById('sigmodOvX').onclick = expClose;
+    // Click the backdrop to dismiss, but not a click inside the box.
+    o.onclick = function (e) { if (e.target === o) expClose(); };
+    var ts = o.querySelectorAll('.sigmod-tab');
+    for (var i = 0; i < ts.length; i++) {
+      ts[i].onclick = (function (t) { return function () { expTab(t); }; })(ts[i].getAttribute('data-tab'));
+    }
+    expTab(EXP.tab);
+  }
 
   /* ==================================================================== *
    * Drag-and-drop tile arrangement                                       *

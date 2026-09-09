@@ -350,6 +350,18 @@ while true; do
     # Re-reading at all is what catches an eUICC profile switch or a card swap.
     simtick=$((simtick + 1))
     if [ -z "$ICCID" ] || [ "$simtick" -ge 5 ]; then simtick=0; poll_sim; fi
+
+    # SIM elementary files for the web UI's SIM explorer. Far slower than the
+    # rest: these change only on a card swap or an eUICC profile switch. The
+    # daemon does this because it owns the AT channel; simfiles.sh only ever
+    # reads the cache it writes, and drops /tmp/.sigmod_simscan to ask for a
+    # refresh out of band.
+    if [ -n "$SIM_CH" ] && [ -x /usr/bin/sim_scan.sh ]; then
+      if [ ! -s /tmp/sim_files.json ] || [ -f /tmp/.sigmod_simscan ]; then
+        rm -f /tmp/.sigmod_simscan
+        /usr/bin/sim_scan.sh "$SIM_CH" /tmp/sim_files.json 2>/dev/null
+      fi
+    fi
   fi
 
   printf '{"rsrp":"%s","rsrq":"%s","rssi":"%s","earfcn":"%s","band":"%s","mode":"%s","dl_kbps":"%s","ul_kbps":"%s","latency_ms":"%s","uptime":"%s","rx_bytes":"%s","tx_bytes":"%s","tac":"%s","cellid":"%s","iccid":"%s","spn":"%s"}' \

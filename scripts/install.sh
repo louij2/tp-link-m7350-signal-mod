@@ -32,7 +32,7 @@ done
 say "Deploying signal daemon + init script..."
 "$ADB" push "$DEV/usr/bin/signal_poll.sh"          /usr/bin/signal_poll.sh
 "$ADB" shell "chmod 755 /usr/bin/signal_poll.sh"
-for d in oled_brand.sh lte_reconnect.sh network_select.sh sd_setup.sh apn.sh at.sh isp_name.sh; do
+for d in oled_brand.sh lte_reconnect.sh network_select.sh sd_setup.sh apn.sh at.sh isp_name.sh sim_scan.sh; do
   [ -f "$DEV/usr/bin/$d" ] && { "$ADB" push "$DEV/usr/bin/$d" "/usr/bin/$d"; "$ADB" shell "chmod 755 /usr/bin/$d"; }
 done
 # Login banner: /etc/profile already sources /etc/profile.d/*.sh, so this is a
@@ -47,16 +47,15 @@ fi
 "$ADB" shell "ln -sf ../init.d/signal_poll /etc/rc5.d/S98signal_poll"
 
 say "Deploying CGI + web assets..."
-"$ADB" push "$DEV/WEBSERVER/www/cgi-bin/signal_stats.sh" "$WWW/cgi-bin/signal_stats.sh"
-"$ADB" shell "chmod 755 $WWW/cgi-bin/signal_stats.sh"
-"$ADB" push "$DEV/WEBSERVER/www/cgi-bin/metrics.sh"      "$WWW/cgi-bin/metrics.sh"
-"$ADB" shell "chmod 755 $WWW/cgi-bin/metrics.sh"
-"$ADB" push "$DEV/WEBSERVER/www/cgi-bin/sysinfo.sh"     "$WWW/cgi-bin/sysinfo.sh"
-"$ADB" shell "chmod 755 $WWW/cgi-bin/sysinfo.sh"
-"$ADB" push "$DEV/WEBSERVER/www/cgi-bin/control.sh"     "$WWW/cgi-bin/control.sh"
-"$ADB" push "$DEV/WEBSERVER/www/cgi-bin/deviceinfo.sh"  "$WWW/cgi-bin/deviceinfo.sh"
-"$ADB" shell "chmod 755 $WWW/cgi-bin/deviceinfo.sh"
-"$ADB" shell "chmod 755 $WWW/cgi-bin/control.sh"
+# One loop, not a hand-maintained list. The previous per-file version had
+# drifted: keys.sh, signal_hist.sh, tiles.sh and sdcard.sh all shipped in the
+# repo but were never installed, so a fresh install silently lacked them.
+for c in signal_stats.sh metrics.sh sysinfo.sh control.sh deviceinfo.sh \
+         keys.sh signal_hist.sh tiles.sh sdcard.sh files.sh simfiles.sh; do
+  "$ADB" push "$DEV/WEBSERVER/www/cgi-bin/$c" "$WWW/cgi-bin/$c"
+  "$ADB" shell "chmod 755 $WWW/cgi-bin/$c"
+done
+
 "$ADB" push "$DEV/WEBSERVER/www/sigmod.js"              "$WWW/sigmod.js"
 "$ADB" push "$DEV/WEBSERVER/www/darkmode.css"           "$WWW/darkmode.css"
 "$ADB" shell "chmod 644 $WWW/sigmod.js $WWW/darkmode.css"

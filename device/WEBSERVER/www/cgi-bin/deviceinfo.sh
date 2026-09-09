@@ -28,7 +28,7 @@ g() { uci get "$1" 2>/dev/null; }
 
 # ---- Custom branding (edit these to rebrand the About page) --------------
 BRAND_MODEL="M7350+"
-BRAND_FW="Extreme 2.6.1 (base 1.1.3 Build 161226)"
+BRAND_FW="Extreme 2.6.2 (base 1.1.3 Build 161226)"
 # --------------------------------------------------------------------------
 
 MODEL="$BRAND_MODEL"
@@ -47,9 +47,11 @@ SIM=$(g sim_msisdn.msisdn.simNumber); [ "$SIM" = "0" ] && SIM=""
 # Operator / APN / radio config (all from UCI -- safe, no AT).
 MCC=$(g isp_profile.profile_isp_data.mcc)
 MNC=$(g isp_profile.profile_isp_data.mnc)
-# Real operator name. Shared with the OLED via isp_name.sh so the two can
-# never disagree, and so the MCC/MNC table lives in exactly one file.
-OPER=$(/usr/bin/isp_name.sh 2>/dev/null)
+# Real operator name, from the MCC/MNC table in isp_name.sh so it lives in
+# exactly one file. --network deliberately ignores /etc/signalmod_isp: that
+# override is a cosmetic label for the OLED, and a reported operator here has
+# to be what the network actually says.
+OPER=$(/usr/bin/isp_name.sh --network 2>/dev/null)
 APN=$(g isp_profile.profile_isp_data_1.apn_name_v4)
 PREF=$(g 4g_network.network_mode.preferred_network)
 case "$PREF" in

@@ -9,14 +9,24 @@
 #     beside it had correctly changed to 234/15, Vodafone.
 # So the MCC/MNC is the source of truth and that key is not.
 #
-# /etc/signalmod_isp overrides everything. A travel eSIM has no identity of its
-# own on the network: it roams on a host operator, so the modem reports the host
-# (Vodafone), never the reseller you bought it from (Nomad, Airalo). If you want
-# the panel to name the reseller, that is what the override is for.
+# /etc/signalmod_isp overrides the name ON THE OLED ONLY. A travel eSIM has no
+# identity of its own on the network: it roams on a host operator, so the modem
+# reports the host (Vodafone), never the reseller you bought it from (Nomad,
+# Airalo). The override is there if you want the panel to name the reseller.
+#
+#   isp_name.sh             honour the override, then fall back to the network
+#   isp_name.sh --network   what the network says, always, ignoring the override
+#
+# The web UI uses --network so a reported operator is never a label someone
+# typed. A field that says "Nomad" next to an mcc/mnc of 23415 invites exactly
+# the wrong conclusion when you are trying to work out why data will not flow.
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
+WANT_NETWORK=0
+[ "$1" = "--network" ] && WANT_NETWORK=1
+
 OVERRIDE=/etc/signalmod_isp
-if [ -s "$OVERRIDE" ]; then
+if [ "$WANT_NETWORK" = 0 ] && [ -s "$OVERRIDE" ]; then
   # Single line, safe characters only, short enough for the OLED line.
   # NOT [:print:] -- this busybox build does not support POSIX character
   # classes in tr and silently deletes every character instead of erroring,

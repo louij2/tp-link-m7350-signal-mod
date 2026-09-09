@@ -2,6 +2,19 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.6.2] — 2026-09-09  ·  **the reported operator is what the network says**
+
+### Changed
+- **The web UI always reports the operator the network says**, and no longer
+  honours `/etc/signalmod_isp`. That override is a cosmetic label for the OLED,
+  and a reported operator has to be the real one: a field reading `Nomad` beside
+  an mcc/mnc of `23415` invites exactly the wrong conclusion when you are trying
+  to work out why data will not flow. `isp_name.sh` gained `--network` for this,
+  which the OLED does not pass.
+- The override is unset on the reference device, so both now read `Vodafone`.
+  It is kept in the code because it costs nothing when absent and it is what
+  makes the name a lookup rather than the hardcoded string 2.6.1 removed.
+
 ## [2.6.1] — 2026-09-09  ·  **eSIM fixes, masonry dashboard**
 
 ### Fixed

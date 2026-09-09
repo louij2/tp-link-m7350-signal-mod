@@ -75,17 +75,24 @@ fi
 # ---- format ----------------------------------------------------------------
 if [ "$1" = "--format" ]; then
   [ "$CONFIRM" = "yes" ] || die "refusing to format without CONFIRM=yes. Everything above would be erased."
+  # FAT32 first, deliberately. This is a REMOVABLE card whose whole purpose is
+  # history you will read somewhere else, and macOS cannot mount ext without
+  # extra software. An ext-first order picked mkfs.ext2 on this device, which
+  # would have produced a card the owner could not read on their own laptop.
+  # ext2 stays as the fallback for a device with no vfat tooling.
   MKFS=""
-  for c in mkfs.ext4 mkfs.ext3 mkfs.ext2 mkfs.vfat mkdosfs; do
+  for c in mkfs.vfat mkdosfs mkfs.ext4 mkfs.ext3 mkfs.ext2; do
     command -v "$c" >/dev/null 2>&1 && { MKFS="$c"; break; }
   done
-  [ -n "$MKFS" ] || die "no mkfs tool on the device (looked for ext4/3/2, vfat)"
+  [ -n "$MKFS" ] || die "no mkfs tool on the device (looked for vfat, ext4/3/2)"
   say
   say "Formatting $TARGET with $MKFS ..."
   umount "$TARGET" 2>/dev/null
   case "$MKFS" in
     mkfs.ext*) "$MKFS" -F -L SIGMOD "$TARGET" >/dev/null 2>&1 || die "$MKFS failed" ;;
-    *)         "$MKFS" -n SIGMOD "$TARGET" >/dev/null 2>&1 || die "$MKFS failed" ;;
+    # -F 32 explicitly: left to choose, mkfs.vfat picks FAT16 on some sizes and
+    # then fails or wastes most of a large card.
+    *)         "$MKFS" -F 32 -n SIGMOD "$TARGET" || die "$MKFS failed" ;;
   esac
   say "  formatted."
 fi

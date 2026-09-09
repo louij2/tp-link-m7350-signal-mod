@@ -127,11 +127,11 @@ All notable changes to the M7350 Extreme mod are documented here.
   is not served to the LAN unauthenticated.
 - The Hardware card now shows SD free space and how many days of history exist.
 
-**Hardware status (updated 2026-09-09):** `apn.sh` inspection, roaming and the
-OLED/operator work are verified on the device. The **SD card path is still
-untested end to end**: the card in the router is exFAT, which this kernel cannot
-mount, so nothing has yet written or read a real history file. `sd_setup.sh`
-detects it correctly and says so, but formatting has not been run.
+**Hardware status (updated 2026-09-09): verified end to end.** The 58.9 GB card
+was exFAT, which this kernel cannot mount. It has now been formatted to FAT32 by
+`sd_setup.sh --format`, mounts at `/media/card`, and the daemon writes a real
+history file to it. Both survive a reboot, and the Hardware card reports the free
+space and the day count.
 
 ## [2.6.0] — 2026-09-01  ·  **data saver**
 

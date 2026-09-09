@@ -351,6 +351,11 @@ while true; do
     simtick=$((simtick + 1))
     if [ -z "$ICCID" ] || [ "$simtick" -ge 5 ]; then simtick=0; poll_sim; fi
 
+    # Diagnostic sample to the SD card, if the toggle is on. Cheap, and the
+    # only record that survives a wedge: everything else worth having is in
+    # tmpfs and dies with the device.
+    [ -x /usr/bin/sd_log.sh ] && /usr/bin/sd_log.sh 2>/dev/null
+
     # SIM elementary files for the web UI's SIM explorer. Far slower than the
     # rest: these change only on a card swap or an eUICC profile switch. The
     # daemon does this because it owns the AT channel; simfiles.sh only ever

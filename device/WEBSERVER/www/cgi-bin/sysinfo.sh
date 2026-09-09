@@ -71,6 +71,7 @@ USRF=$(dfree /usr); USRP=$(dpct /usr)
 # The slot exists (/sys/class/mmc_host/mmc0) even with nothing in it, so report
 # the slot's state rather than pretending the feature is missing.
 SAVER=$([ -f /etc/signalmod_saver ] && echo on || echo off)
+SDLOG=off; [ -f /etc/signalmod_sdlog ] && SDLOG=on
 
 SD="no slot"
 SDDAYS=""
@@ -89,5 +90,5 @@ if [ -d /sys/class/mmc_host/mmc0 ]; then
   fi
 fi
 
-printf '{"uptime":"%s","temp":"%s","load":"%s","memtotal":"%s","memfree":"%s","wan":"%s","ttl":"%s","adb":"%s","ftp":"%s","telnet":"%s","ssh":"%s","battery":"%s","charging":"%s","wifi":"%s","cpu":"%s","swaptotal":"%s","swapfree":"%s","rootfree":"%s","rootpct":"%s","usrfree":"%s","usrpct":"%s","sd":"%s","sddays":"%s","roaming":"%s","roamstatus":"%s","apn":"%s","apnidx":"%s","saver":"%s"}' \
-  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG" "$WIFI" "$CPU" "$SWT" "$SWF" "$ROOTF" "$ROOTP" "$USRF" "$USRP" "$SD" "$SDDAYS" "$ROAM" "$ROAMST" "$APN" "$APNIDX" "$SAVER"
+printf '{"uptime":"%s","temp":"%s","load":"%s","memtotal":"%s","memfree":"%s","wan":"%s","ttl":"%s","adb":"%s","ftp":"%s","telnet":"%s","ssh":"%s","battery":"%s","charging":"%s","wifi":"%s","cpu":"%s","swaptotal":"%s","swapfree":"%s","rootfree":"%s","rootpct":"%s","usrfree":"%s","usrpct":"%s","sd":"%s","sddays":"%s","roaming":"%s","roamstatus":"%s","apn":"%s","apnidx":"%s","saver":"%s","sdlog":"%s"}' \
+  "$UP" "$TEMP" "$LOAD" "$MT" "$MF" "$WAN" "$TTL" "$ADBST" "$FTP" "$TELNET" "$SSH" "$BATT" "$CHG" "$WIFI" "$CPU" "$SWT" "$SWF" "$ROOTF" "$ROOTP" "$USRF" "$USRP" "$SD" "$SDDAYS" "$ROAM" "$ROAMST" "$APN" "$APNIDX" "$SAVER" "$SDLOG"

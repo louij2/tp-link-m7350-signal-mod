@@ -49,6 +49,8 @@ LAN_IP=$(ip -4 addr show br0 2>/dev/null | grep -o 'inet [0-9.]*' | head -1 | cu
 FTP_MARK=/etc/signalmod_ftp
 SAVER_MARK=/etc/signalmod_saver
 saver_state() { [ -f "$SAVER_MARK" ] && echo on || echo off; }
+SDLOG_MARK=/etc/signalmod_sdlog
+sdlog_state() { [ -f "$SDLOG_MARK" ] && echo on || echo off; }
 
 # --- FTP (busybox ftpd via tcpsvd, rooted at /, LAN-only) ------------------
 ftp_state() { netstat -ltn 2>/dev/null | grep -q "$LAN_IP:21\|:::21\|0.0.0.0:21" && echo on || echo off; }
@@ -122,6 +124,16 @@ case "$A" in
   saver_on)     touch /etc/signalmod_saver 2>/dev/null; printf '{"ok":true,"saver":"%s"}' "$(saver_state)" ;;
   saver_off)    rm -f /etc/signalmod_saver 2>/dev/null; printf '{"ok":true,"saver":"%s"}' "$(saver_state)" ;;
   saver_status) printf '{"saver":"%s"}' "$(saver_state)" ;;
+
+  # ---- diagnostic logging to the SD card --------------------------------
+  # Same marker-file pattern, so it survives a reboot and the daemon picks it
+  # up without a restart. Turning it on with no card mounted is not an error:
+  # sd_log.sh simply does nothing until a card appears, and it never falls back
+  # to /tmp, because a log that dies with the device is the thing this exists
+  # to avoid.
+  sdlog_on)     touch /etc/signalmod_sdlog 2>/dev/null; printf '{"ok":true,"sdlog":"%s"}' "$(sdlog_state)" ;;
+  sdlog_off)    rm -f /etc/signalmod_sdlog 2>/dev/null; printf '{"ok":true,"sdlog":"%s"}' "$(sdlog_state)" ;;
+  sdlog_status) printf '{"sdlog":"%s"}' "$(sdlog_state)" ;;
 
   # Data roaming. A travel eSIM roams by definition -- its home network is not
   # the one it attaches to -- so with this off the modem registers, shows full

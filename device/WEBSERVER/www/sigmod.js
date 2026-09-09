@@ -433,6 +433,7 @@
           'Roaming <span class="sigmod-pill" id="pillRoam">--</span></span>' +
         '<span class="sigmod-btn" id="btnApn">' + svg('signal', 16) + 'APN</span>' +
         '<span class="sigmod-btn danger" id="btnReboot">' + svg('reboot', 16) + 'Reboot</span>' +
+        '<span class="sigmod-btn" id="btnSdlog">' + svg('usb', 16) + 'SD logging <span class="sigmod-pill" id="pillSdlog">--</span></span>' +
         '<span class="sigmod-btn" id="btnFiles">' + svg('usb', 16) + 'Explorer</span>' +
         '<span class="sigmod-btn" id="btnResetTiles">' + svg('advanced', 16) + 'Reset layout</span>' +
       '</div>' +
@@ -514,6 +515,11 @@
     wireControls();
     var rt = document.getElementById('btnResetTiles'); if (rt) rt.onclick = resetTileOrder;
     var fb = document.getElementById('btnFiles'); if (fb) fb.onclick = openExplorer;
+    var sl = document.getElementById('btnSdlog');
+    if (sl) sl.onclick = function () {
+      var on = (document.getElementById('pillSdlog') || {}).textContent === 'ON';
+      ctl(on ? 'sdlog_off' : 'sdlog_on', function () { refreshCtlState(); });
+    };
     var ak = document.getElementById('btnAddKey');   if (ak) ak.onclick = addKey;
     var cp = document.getElementById('btnChangePw'); if (cp) cp.onclick = changePw;
     refreshCtlState();
@@ -609,6 +615,7 @@
         var ab = document.getElementById('btnApn');
         if (ab && d.apn) ab.title = 'APN: ' + d.apn + (d.apnidx ? '  (profile ' + d.apnidx + ')' : '');
         setPill('pillSaver', d.saver);
+        setPill('pillSdlog', d.sdlog);
         if (d.saver) { saverOn = (d.saver === 'on'); applySaverCadence(); }
         var w = document.getElementById('spWan'); if (w) w.textContent = d.wan || '--';
         var t = document.getElementById('spTemp'); if (t && d.temp) t.textContent = d.temp + ' °C';

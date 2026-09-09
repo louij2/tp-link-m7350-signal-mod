@@ -2,6 +2,23 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.6.3] — 2026-09-09  ·  **SD card verified on hardware**
+
+### Fixed
+- **`sd_setup.sh --format` would have used ext2.** The mkfs preference was ext4,
+  ext3, ext2, vfat, and this device has `mkfs.ext2`, so a removable card whose
+  whole purpose is carrying history you read elsewhere would have been formatted
+  into something macOS cannot mount without extra software. FAT32 comes first
+  now, with ext kept as the fallback for a device without vfat tooling.
+- `mkfs.vfat` is called with `-F 32` explicitly. Left to choose it picks FAT16 at
+  some sizes and then either fails or wastes most of a large card.
+
+### Verified
+- The SD path is proven on hardware for the first time. A 58.9 GB card formatted
+  to FAT32, mounted at `/media/card`, the daemon wrote a real history CSV with a
+  live sample, and after a reboot the card remounts on its own with the history
+  intact and the Hardware card reporting free space and the day count.
+
 ## [2.6.2] — 2026-09-09  ·  **the reported operator is what the network says**
 
 ### Changed

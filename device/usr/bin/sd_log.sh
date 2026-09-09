@@ -18,7 +18,14 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 MARK=/etc/signalmod_sdlog        # toggle: present means on
 MNT=/media/card
 DIR="$MNT/signalmod/logs"
-MAXKB=20480                      # 20 MB per day, then it stops appending
+CONF=/etc/signalmod.conf
+# Read key=value rather than sourcing: settings.sh range-checks everything that
+# goes in, but sourcing a config as shell turns any future write path into code
+# execution. Costs nothing to avoid.
+cfg(){ v=$(sed -n "s/^$1=//p" "$CONF" 2>/dev/null | tail -1)
+       case "$v" in ''|*[!0-9]*) printf '%s' "$2" ;; *) printf '%s' "$v" ;; esac; }
+MAXKB=$(( $(cfg sdlog_max_mb 20) * 1024 ))   # per day, then it stops appending
+KEEPDAYS=$(cfg sdlog_keep_days 14)
 
 [ "$1" = "--force" ] || [ -f "$MARK" ] || exit 0
 # No card, nothing to do. Never fall back to /tmp: a log that dies with the
@@ -73,6 +80,25 @@ LAST=$(cat "$SEEN" 2>/dev/null | tr -dc '0-9')
 if [ "$NOW" -gt "$LAST" ]; then
   dmesg 2>/dev/null | tail -n $((NOW - LAST)) | sed "s/^/$TS /" >> "$KLOG"
   printf '%s' "$NOW" > "$SEEN"
+fi
+
+# Retention. Without this the card slowly fills with daily logs nobody reads,
+# which is a quiet version of the outage this feature exists to diagnose.
+# No find -mtime here: busybox find on this build has it, but the filenames are
+# already dates, so comparing names needs no stat and cannot be fooled by a
+# touched mtime.
+# NOT date -d "-14 days": busybox rejects that with "invalid date" and the
+# whole retention pass then silently does nothing, which is the worst kind of
+# broken setting. Epoch arithmetic with -D "%s" is what this build understands.
+NOW_S=$(date +%s 2>/dev/null)
+CUT=""
+[ -n "$NOW_S" ] && CUT=$(date -D "%s" -d "$((NOW_S - KEEPDAYS * 86400))" '+%Y-%m-%d' 2>/dev/null)
+if [ -n "$CUT" ]; then
+  for old in "$DIR"/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.log; do
+    [ -f "$old" ] || continue
+    b=$(basename "$old" | cut -c1-10)
+    [ "$b" \< "$CUT" ] && rm -f "$old"
+  done
 fi
 
 sync

@@ -40,12 +40,21 @@ esac
 printf 'Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\n\r\n'
 
 WAN=rmnet0
-TTL_VAL=65
 MARK=/etc/signalmod_ttl
 # Bind admin services to the LAN only (never the WAN). Derived from br0 so it
 # follows any LAN-IP change instead of being hardcoded.
 LAN_IP=$(ip -4 addr show br0 2>/dev/null | grep -o 'inet [0-9.]*' | head -1 | cut -d' ' -f2)
 [ -z "$LAN_IP" ] && LAN_IP=192.168.0.1
+
+# Configurable ports and values, written by settings.sh. Read with sed rather
+# than sourced: this file is 600 and settings.sh range-checks everything that
+# goes in, but sourcing a config as shell means any future path that writes it
+# becomes code execution. Reading key=value costs nothing and closes that off.
+CONF=/etc/signalmod.conf
+cfg(){ v=$(sed -n "s/^$1=//p" "$CONF" 2>/dev/null | tail -1)
+       case "$v" in ''|*[!0-9]*) printf '%s' "$2" ;; *) printf '%s' "$v" ;; esac; }
+TELNET_PORT=$(cfg telnet_port 23)
+TTL_VAL=$(cfg ttl_value 65)
 FTP_MARK=/etc/signalmod_ftp
 SAVER_MARK=/etc/signalmod_saver
 saver_state() { [ -f "$SAVER_MARK" ] && echo on || echo off; }
@@ -53,17 +62,24 @@ SDLOG_MARK=/etc/signalmod_sdlog
 sdlog_state() { [ -f "$SDLOG_MARK" ] && echo on || echo off; }
 
 # --- FTP (busybox ftpd via tcpsvd, rooted at /, LAN-only) ------------------
-ftp_state() { netstat -ltn 2>/dev/null | grep -q "$LAN_IP:21\|:::21\|0.0.0.0:21" && echo on || echo off; }
+# FTP on this device is the FIRMWARE'S OWN vsftpd, started by
+# /etc/init.d/service_storageshare and holding 0.0.0.0:21 from boot. The mod
+# used to spawn its own tcpsvd ftpd and grep port 21 for state, which meant:
+#   * the pill read ON because vsftpd was listening, not because we started it;
+#   * ftp_off could never stop it, since it killed tcpsvd and not vsftpd;
+#   * our tcpsvd could never bind 21 anyway, vsftpd already had it.
+# So the toggle reported and controlled the wrong thing. It drives vsftpd now.
+ftp_state() { pgrep -x vsftpd >/dev/null 2>&1 && echo on || echo off; }
 ftp_on() {
   ftp_state | grep -q on && { touch "$FTP_MARK"; return; }
-  setsid tcpsvd -vE "$LAN_IP" 21 ftpd -w / </dev/null >/dev/null 2>&1 &
+  setsid vsftpd </dev/null >/dev/null 2>&1 &
   touch "$FTP_MARK" 2>/dev/null
 }
-ftp_off() { pkill -f "tcpsvd $LAN_IP 21" 2>/dev/null; pkill -f 'tcpsvd -vE '"$LAN_IP"' 21' 2>/dev/null; rm -f "$FTP_MARK" 2>/dev/null; }
+ftp_off() { pkill -x vsftpd 2>/dev/null; pkill -f 'tcpsvd .* ftpd' 2>/dev/null; rm -f "$FTP_MARK" 2>/dev/null; }
 
 # --- Telnet (busybox telnetd; often already listening on :23) --------------
-tel_state() { netstat -ltn 2>/dev/null | grep -q ':23 ' && echo on || echo off; }
-tel_on()  { tel_state | grep -q on || { setsid telnetd -l /bin/sh </dev/null >/dev/null 2>&1 & } ; }
+tel_state() { pgrep -x telnetd >/dev/null 2>&1 && echo on || echo off; }
+tel_on()  { tel_state | grep -q on || { setsid telnetd -l /bin/sh -p "$TELNET_PORT" </dev/null >/dev/null 2>&1 & } ; }
 tel_off() { pkill telnetd 2>/dev/null; }
 
 # --- Wi-Fi AP on/off (via the QCMAP wlan_object ubus) ----------------------

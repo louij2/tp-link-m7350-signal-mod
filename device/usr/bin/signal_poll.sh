@@ -260,6 +260,10 @@ autosel_guard() {
   NOROUTE=0
 }
 
+CONF=/etc/signalmod.conf
+cfg(){ v=$(sed -n "s/^$1=//p" "$CONF" 2>/dev/null | tail -1)
+       case "$v" in ''|*[!0-9]*) printf '%s' "$2" ;; *) printf '%s' "$v" ;; esac; }
+
 saver_on() { [ -f "$SAVER_MARK" ]; }
 BAD=""
 TAC=""; CELLID=""; ICCID=""; SPN=""; slow=0; simtick=0
@@ -373,5 +377,7 @@ while true; do
     "$RSRP" "$RSRQ" "$RSSI" "$EARFCN" "$BAND" "$MODE" "$DL_KBPS" "$UL_KBPS" "$LAT" "$UPTIME" "$RX" "$TX" "$TAC" "$CELLID" "$ICCID" "$SPN" > /tmp/signal.json
   # 30s instead of 5s while saving data. Nothing here needs to be quick, and a
   # slower loop also means fewer AT reads on a saturated single core.
-  if saver_on; then sleep 30; else sleep 5; fi
+  # Cadence is configurable now; settings.sh bounds both values, and cfg falls
+  # back to the old hard-coded numbers if the file is missing or garbage.
+  if saver_on; then sleep "$(cfg saver_poll_secs 30)"; else sleep "$(cfg poll_secs 5)"; fi
 done

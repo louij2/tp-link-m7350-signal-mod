@@ -10,9 +10,15 @@
 </head><body>
 <div id="top_menu"></div>
 <div id="header"><span class="icon-logo">TP-LINK</span> <span id="deviceName">M7350</span></div>
-<ul class="tabs">
-  <li id="tabStatus" class="active">Status</li><li>SMS</li><li id="tabWizard">Wizard</li><li>Advanced</li>
+<!-- ids and nesting copied from the firmware's settings.html: the tab strip is
+     ul#tabList inside div#top_menu, and the mod injects its own tab after
+     li#tabAdvanced. Without the real ids the harness silently cannot exercise
+     that injection at all. -->
+<div class="container" id="top_menu">
+<ul class="tabs" id="tabList">
+  <li id="tabWizard"><a><span>Wizard</span></a></li><li id="tabStatus" class="active"><a><span>Status</span></a></li><li id="tabSMS"><a><span>SMS</span></a></li><li id="tabAdvanced"><a><span>Advanced</span></a></li>
 </ul>
+</div>
 <div id="content">
   <div class="container">
     <div class="statusPage">

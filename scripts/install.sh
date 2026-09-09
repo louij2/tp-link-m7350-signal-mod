@@ -51,7 +51,7 @@ say "Deploying CGI + web assets..."
 # drifted: keys.sh, signal_hist.sh, tiles.sh and sdcard.sh all shipped in the
 # repo but were never installed, so a fresh install silently lacked them.
 for c in signal_stats.sh metrics.sh sysinfo.sh control.sh deviceinfo.sh \
-         keys.sh signal_hist.sh tiles.sh sdcard.sh files.sh simfiles.sh; do
+         keys.sh signal_hist.sh tiles.sh sdcard.sh files.sh simfiles.sh settings.sh; do
   "$ADB" push "$DEV/WEBSERVER/www/cgi-bin/$c" "$WWW/cgi-bin/$c"
   "$ADB" shell "chmod 755 $WWW/cgi-bin/$c"
 done

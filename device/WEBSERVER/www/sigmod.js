@@ -34,6 +34,7 @@
   var CGI_HIST   = '/cgi-bin/signal_hist.sh';
   var CGI_TILES  = '/cgi-bin/tiles.sh';
   var CGI_FILES  = '/cgi-bin/files.sh';
+  var CGI_SETTINGS = '/cgi-bin/settings.sh';
   var CGI_SIMFILES = '/cgi-bin/simfiles.sh';
 
   // Custom device name (AirPort-style). Change this to rebrand the UI.
@@ -187,6 +188,7 @@
     '.sigmod-btn.on{border-color:#34d399;color:#34d399!important;}',
     '.sigmod-btn.off{border-color:#2a313b;color:#9aa4b2!important;}',
     '.sigmod-btn.danger:hover{border-color:#f87171;color:#f87171!important;}',
+    '.sigmod-in{background:#0d1117!important;color:#e6edf3!important;border:1px solid #2a313b!important;border-radius:6px!important;padding:5px 8px!important;width:110px!important;font-size:13px!important;}',
     '.sigmod-pill{font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid currentColor;}',
     '.sigmod-keys{margin-top:10px;display:flex;flex-direction:column;gap:8px;}',
     '.sigmod-key{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#1d232c!important;border:1px solid #2a313b;border-radius:8px;padding:8px 10px;}',
@@ -431,11 +433,8 @@
           'Data saver <span class="sigmod-pill" id="pillSaver">--</span></span>' +
         '<span class="sigmod-btn" id="btnRoam">' + svg('globe', 16) +
           'Roaming <span class="sigmod-pill" id="pillRoam">--</span></span>' +
-        '<span class="sigmod-btn" id="btnApn">' + svg('signal', 16) + 'APN</span>' +
         '<span class="sigmod-btn danger" id="btnReboot">' + svg('reboot', 16) + 'Reboot</span>' +
         '<span class="sigmod-btn" id="btnSdlog">' + svg('usb', 16) + 'SD logging <span class="sigmod-pill" id="pillSdlog">--</span></span>' +
-        '<span class="sigmod-btn" id="btnFiles">' + svg('usb', 16) + 'Explorer</span>' +
-        '<span class="sigmod-btn" id="btnResetTiles">' + svg('advanced', 16) + 'Reset layout</span>' +
       '</div>' +
       '<div class="content-label" style="margin-top:8px;font-size:11px;">' +
         'Data saver stops the device generating traffic of its own: no latency ping, ' + '\n' +
@@ -513,8 +512,6 @@
       host.appendChild(wrap);
     }
     wireControls();
-    var rt = document.getElementById('btnResetTiles'); if (rt) rt.onclick = resetTileOrder;
-    var fb = document.getElementById('btnFiles'); if (fb) fb.onclick = openExplorer;
     var sl = document.getElementById('btnSdlog');
     if (sl) sl.onclick = function () {
       var on = (document.getElementById('pillSdlog') || {}).textContent === 'ON';
@@ -612,8 +609,6 @@
         setPill('pillWifi', d.wifi);
         setPill('pillRoam', d.roaming === '1' ? 'on' : (d.roaming === '0' ? 'off' : undefined));
         window.__sigmodApn = d.apn || '';
-        var ab = document.getElementById('btnApn');
-        if (ab && d.apn) ab.title = 'APN: ' + d.apn + (d.apnidx ? '  (profile ' + d.apnidx + ')' : '');
         setPill('pillSaver', d.saver);
         setPill('pillSdlog', d.sdlog);
         if (d.saver) { saverOn = (d.saver === 'on'); applySaverCadence(); }
@@ -665,6 +660,19 @@
     var use = (pw != null) ? pw : storedPw();
     if (use) x.setRequestHeader('X-Auth', use);
     x.send(body || null);
+  }
+
+  // Lives in Settings now rather than as another button in Controls.
+  function setApn() {
+    var cur = (window.__sigmodApn || '');
+    var v = window.prompt('APN for the active profile.\n\nA travel eSIM needs its provider\'s APN, not the one the modem picks automatically.', cur);
+    if (v === null) return;
+    v = v.replace(/\s+/g, '');
+    if (!v) return;
+    api('POST', CGI_CTL + '?action=setapn', v, function (d) {
+      if (d && d.ok) window.alert('APN set to ' + d.apn + ' (was ' + (d.was || 'unset') + ').\n\nReconnect or reboot for it to take effect.');
+      else window.alert((d && d.error) || 'Could not set the APN.');
+    });
   }
 
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
@@ -806,18 +814,6 @@
       ctl(on ? 'roaming_off' : 'roaming_on', function (d) { setPill('pillRoam', d.roaming || (on ? 'off' : 'on')); });
     };
 
-    var apnb = document.getElementById('btnApn');
-    if (apnb) apnb.onclick = function () {
-      var cur = (window.__sigmodApn || '');
-      var v = window.prompt('APN for the active profile.\n\nA travel eSIM needs its provider\'s APN, not the one the modem picks automatically.', cur);
-      if (v === null) return;
-      v = v.replace(/\s+/g, '');
-      if (!v) return;
-      api('POST', CGI_CTL + '?action=setapn', v, function (d) {
-        if (d && d.ok) window.alert('APN set to ' + d.apn + ' (was ' + (d.was || 'unset') + ').\n\nReconnect or reboot for it to take effect.');
-        else window.alert((d && d.error) || 'Could not set the APN.');
-      });
-    };
 
     var wifi = document.getElementById('btnWifi');
     var sv = document.getElementById('btnSaver');
@@ -1119,6 +1115,192 @@
     expTab(EXP.tab);
   }
 
+    /* ==================================================================== *
+   * Settings: its own tab, a tree, and everything that is not a toggle   *
+   * ==================================================================== */
+  // The Status page is for on/off switches and things you read. Anything you
+  // CONFIGURE lives here, reached from a tab of its own rather than piling more
+  // buttons into Controls.
+  //
+  // This is an overlay, not a real route. The firmware rebuilds <body> from its
+  // own templates, so owning a content area means fighting the template engine
+  // on every render. The Explorer already proved an overlay survives that.
+  var CFG = { tab: 'services', spec: null };
+
+  var CFG_TABS = [
+    { k: 'services',  label: 'Services' },
+    { k: 'diag',      label: 'Diagnostics' },
+    { k: 'conn',      label: 'Connection' },
+    { k: 'dash',      label: 'Dashboard' },
+    { k: 'storage',   label: 'Storage' }
+  ];
+
+  // key -> [label, help]. Kept beside the CGI's own spec, which carries the
+  // bounds; the UI never invents limits of its own.
+  var CFG_FIELDS = {
+    services: [
+      ['telnet_port', 'Telnet port', 'Takes effect the next time Telnet is switched on. FTP is not here: it is the firmware\'s own vsftpd on 21, with no config file to set a port in.'],
+      ['ttl_value',   'TTL value',   'Outgoing TTL when the TTL-fix is on. 65 is what hides tethering from SMARTY and Three.']
+    ],
+    diag: [
+      ['sdlog_max_mb',    'SD log cap (MB/day)', 'Logging stops for the day at this size rather than filling the card.'],
+      ['sdlog_keep_days', 'Keep logs (days)',    'Older daily logs are removed.'],
+      ['poll_secs',       'Poll interval (s)',   'How often the daemon samples the modem.'],
+      ['saver_poll_secs', 'Poll in data saver (s)', 'The slower cadence used while data saver is on.']
+    ]
+  };
+
+  function cfgClose() {
+    var o = document.getElementById('sigmodCfg');
+    if (o && o.parentNode) o.parentNode.removeChild(o);
+  }
+
+  function cfgBody(h) { var b = document.getElementById('sigmodCfgBody'); if (b) b.innerHTML = h; }
+
+  function cfgNumbers(section) {
+    var fields = CFG_FIELDS[section] || [];
+    if (!CFG.spec) { cfgBody('<div class="sigmod-fr"><span class="nm">Loading...</span></div>'); return; }
+    var h = '<table class="sigmod-ef">';
+    for (var i = 0; i < fields.length; i++) {
+      var k = fields[i][0], sp = CFG.spec[k];
+      if (!sp) continue;
+      h += '<tr><td style="width:200px">' + esc(fields[i][1]) + '</td>' +
+           '<td style="width:150px"><input class="sigmod-in" id="cfg_' + esc(k) + '" type="number" ' +
+             'min="' + esc(sp.min) + '" max="' + esc(sp.max) + '" value="' + esc(sp.value) + '"></td>' +
+           '<td>' + esc(fields[i][2]) +
+             ' <span style="opacity:.6">Default ' + esc(sp['default']) +
+             ', ' + esc(sp.min) + ' to ' + esc(sp.max) + '.</span></td></tr>';
+    }
+    h += '</table><div class="sigmod-ctrls" style="padding:12px 8px">' +
+         '<span class="sigmod-btn" id="cfgSave">' + svg('lock', 16) + 'Save</span>' +
+         '<span id="cfgMsg" class="content-label"></span></div>';
+    cfgBody(h);
+    var btn = document.getElementById('cfgSave');
+    if (btn) btn.onclick = function () { cfgSave(section); };
+  }
+
+  function cfgSave(section) {
+    var fields = CFG_FIELDS[section] || [], parts = [];
+    for (var i = 0; i < fields.length; i++) {
+      var k = fields[i][0], el = document.getElementById('cfg_' + k);
+      if (el && el.value !== '') parts.push(k + '=' + encodeURIComponent(el.value));
+    }
+    if (!parts.length) return;
+    var msg = document.getElementById('cfgMsg');
+    if (msg) msg.textContent = 'Saving...';
+    api('POST', CGI_SETTINGS + '?op=set', parts.join('&'), function (d, st) {
+      if (!msg) return;
+      // Show the server's own message. It range-checks, not the browser, so its
+      // rejection is the one that matters.
+      msg.textContent = (d && d.ok) ? 'Saved.' :
+                        (d && d.error) ? ('Rejected: ' + d.error) :
+                        ('Failed (' + st + ')');
+      if (d && d.ok) cfgLoad(section);
+    });
+  }
+
+  function cfgLoad(section) {
+    api('GET', CGI_SETTINGS + '?op=get', null, function (d, st) {
+      if (st === 403) { cfgBody('<div class="sigmod-fr"><span class="nm">Password needed.</span></div>'); return; }
+      if (!d || d.error) { cfgBody('<div class="sigmod-fr"><span class="nm">Could not read settings.</span></div>'); return; }
+      CFG.spec = d;
+      cfgNumbers(section);
+    });
+  }
+
+  function cfgSection(k) {
+    CFG.tab = k;
+    var ts = document.querySelectorAll('#sigmodCfg .sigmod-tab');
+    for (var i = 0; i < ts.length; i++) {
+      ts[i].className = 'sigmod-tab' + (ts[i].getAttribute('data-sec') === k ? ' on' : '');
+    }
+    if (k === 'services' || k === 'diag') { cfgLoad(k); return; }
+    if (k === 'conn') {
+      cfgBody('<div class="sigmod-ctrls" style="padding:8px">' +
+                '<span class="sigmod-btn" id="cfgApn">' + svg('signal', 16) + 'Set APN</span>' +
+              '</div>' +
+              '<div class="sigmod-note" style="border:0">' +
+                'A travel eSIM needs its provider\'s APN, not the one the modem picks by matching the ' +
+                'visited network. Note this writes the uci list the web UI displays, which is ' +
+                '<b>not</b> what QCMAP dials: for the APN to actually reach the modem use ' +
+                'Advanced then Dial-up Settings.' +
+              '</div>');
+      var a = document.getElementById('cfgApn');
+      if (a) a.onclick = function () { cfgClose(); setApn(); };
+      return;
+    }
+    if (k === 'dash') {
+      cfgBody('<div class="sigmod-ctrls" style="padding:8px">' +
+                '<span class="sigmod-btn" id="cfgReset">' + svg('advanced', 16) + 'Reset layout</span>' +
+              '</div>' +
+              '<div class="sigmod-note" style="border:0">' +
+                'Forgets the saved tile order, so the dashboard goes back to its default arrangement. ' +
+                'The order is stored on the device, so this affects every browser.' +
+              '</div>');
+      var r = document.getElementById('cfgReset');
+      if (r) r.onclick = function () { resetTileOrder(); cfgClose(); };
+      return;
+    }
+    if (k === 'storage') {
+      cfgBody('<div class="sigmod-ctrls" style="padding:8px">' +
+                '<span class="sigmod-btn" id="cfgExp">' + svg('usb', 16) + 'Open Explorer</span>' +
+              '</div>' +
+              '<div class="sigmod-note" style="border:0">' +
+                'Diagnostic logs are written to the card when SD logging is on, under ' +
+                'signalmod/logs, and are readable in the Explorer. Formatting a card is deliberately ' +
+                'not offered here: it erases everything, so it stays a shell command ' +
+                '(<code>CONFIRM=yes sd_setup.sh --format</code>).' +
+              '</div>');
+      var e = document.getElementById('cfgExp');
+      if (e) e.onclick = function () { cfgClose(); openExplorer(); };
+      return;
+    }
+  }
+
+  function openSettings() {
+    cfgClose();
+    var o = document.createElement('div');
+    o.id = 'sigmodCfg';
+    o.className = 'sigmod-ov';
+    var tabs = '';
+    for (var i = 0; i < CFG_TABS.length; i++) {
+      tabs += '<span class="sigmod-tab" data-sec="' + CFG_TABS[i].k + '">' + esc(CFG_TABS[i].label) + '</span>';
+    }
+    o.innerHTML =
+      '<div class="sigmod-ov-box">' +
+        '<div class="sigmod-ov-hd">' + svg('advanced', 15) +
+          '<h3>Settings</h3><span class="sigmod-ov-x" id="sigmodCfgX">&times;</span>' +
+        '</div>' +
+        '<div class="sigmod-tabs">' + tabs + '</div>' +
+        '<div class="sigmod-fl" id="sigmodCfgBody"></div>' +
+        '<div class="sigmod-note">Values are range-checked on the device, not in the browser.</div>' +
+      '</div>';
+    document.body.appendChild(o);
+    document.getElementById('sigmodCfgX').onclick = cfgClose;
+    o.onclick = function (e) { if (e.target === o) cfgClose(); };
+    var ts = o.querySelectorAll('.sigmod-tab');
+    for (var j = 0; j < ts.length; j++) {
+      ts[j].onclick = (function (k) { return function () { cfgSection(k); }; })(ts[j].getAttribute('data-sec'));
+    }
+    cfgSection(CFG.tab);
+  }
+
+  // The tab itself, injected after Advanced. The framework rebuilds <body>, so
+  // this is re-checked on the same tick as everything else rather than being
+  // wired once at load.
+  function injectSettingsTab() {
+    var list = document.getElementById('tabList');
+    if (!list || document.getElementById('tabSigmod')) return;
+    var after = document.getElementById('tabAdvanced');
+    if (!after) return;
+    var li = document.createElement('li');
+    li.id = 'tabSigmod';
+    li.innerHTML = '<a><i class="icon-advanced"></i><span>Settings</span></a>';
+    li.onclick = function (e) { e.preventDefault(); e.stopPropagation(); openSettings(); };
+    if (after.nextSibling) list.insertBefore(li, after.nextSibling);
+    else list.appendChild(li);
+  }
+
   /* ==================================================================== *
    * Drag-and-drop tile arrangement                                       *
    *                                                                      *
@@ -1288,6 +1470,7 @@
     try { ensureBranding(); } catch (e) {}
     try { ensureIcons(); } catch (e) {}
     try { injectSignalRows(); } catch (e) {}
+    try { injectSettingsTab(); } catch (e) {}
     try { injectPanels(); } catch (e) {}
     try { arrangeTiles(); } catch (e) {}
     try { fetchSignal(); } catch (e) {}

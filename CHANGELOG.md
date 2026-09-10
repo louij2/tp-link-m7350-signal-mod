@@ -2,6 +2,72 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.8.0] — 2026-09-10  ·  **Settings tab, and diagnostic logging to the SD card**
+
+### Added
+- **Settings gets its own tab**, injected after Advanced. The Status page is for
+  on/off switches and things you read; anything you *configure* now lives here.
+  APN, Reset layout and the Explorer launcher left Controls, which is down to
+  toggles plus Reboot.
+  - It opens as a full overlay rather than owning a content area. The firmware
+    rebuilds `<body>` from its own templates, so holding a route means fighting
+    the template engine on every render, and the Explorer already showed an
+    overlay survives that.
+  - Five sections: Services, Diagnostics, Connection, Dashboard, Storage.
+- **`settings.sh`** stores the Telnet port, TTL value, SD log cap and retention,
+  and both poll intervals in `/etc/signalmod.conf`.
+  - **Every value is range-checked on the device, not in the browser.** The UI is
+    the convenient path, not the only one.
+  - The config is read as `key=value`, never sourced. Sourcing a config as shell
+    turns any future write path to it into code execution, and reading it costs
+    nothing.
+  - All four new knobs are wired to code that reads them rather than left as
+    decoration.
+- **Diagnostic logging to the SD card, behind a toggle.** When this device
+  wedges, everything useful about the minutes beforehand is in tmpfs and dies
+  with it: `/tmp/signal.json`, `dmesg` and the process table are all RAM. The
+  card is the only thing that survives.
+  - Two files a day. A sample line with uptime, load, memory, process count,
+    temperature, default gateway, rmnet counters, Wi-Fi clients, RSRP, battery
+    and which of the five daemons are actually alive. And new kernel messages
+    since the last sample, because a hang usually shows there first (OOM kills,
+    watchdog, USB resets) and `dmesg` is a ring buffer a reboot throws away.
+  - **Every write is synced.** A buffered append is worthless here: the sample
+    that matters is the one taken just before a hang, and that is precisely the
+    one still sitting in the page cache when the power goes.
+  - Off by default, marker file on the persistent rootfs so it survives a
+    reboot, stops at its daily cap rather than filling the card, and never falls
+    back to `/tmp` when no card is mounted, because a log that dies with the
+    device is the thing this exists to avoid.
+  - The Explorer already browses `/media/card/signalmod/logs`, so the logs are
+    readable in the web UI with no extra work.
+
+### Fixed
+- **The FTP toggle was never controlling FTP.** The firmware runs its own
+  `vsftpd` from `service_storageshare`, holding `0.0.0.0:21` from boot. The mod
+  spawned its own `tcpsvd ftpd` and grepped port 21 for state, so the pill read
+  ON because *vsftpd* was listening rather than because we had started anything,
+  `ftp_off` could never stop it, and our `tcpsvd` could not have bound 21
+  regardless. The toggle drives `vsftpd` now: off genuinely stops it and frees
+  the port, on brings it back, and the state matches reality.
+- **Service state is keyed on the process, not the configured port.** Keying on
+  the port meant that changing it orphaned the running listener: `off` could no
+  longer find what it started, and the state described a port nothing was on.
+- **Log retention would silently never have run.** busybox rejects
+  `date -d "-14 days"` with `invalid date`, so the pruning pass did nothing and
+  said nothing. It uses epoch arithmetic with `-D "%s"` now.
+- **`install.sh` shipped an incomplete install.** It listed CGIs one by one and
+  had never gained `keys.sh`, `signal_hist.sh`, `tiles.sh` or `sdcard.sh`, so a
+  fresh install silently lacked SSH key management, the sparkline history, saved
+  tile order and the SD card endpoints. It is a loop over the real set now.
+
+### Removed
+- **`ftp_port`**, rather than leave a knob that does nothing. There is no
+  `vsftpd.conf` on this device, so there is nowhere to put a `listen_port`
+  without creating configuration for a stock service that also backs the
+  firmware's own file sharing. Telnet keeps a configurable port; that one is
+  genuinely ours.
+
 ## [2.7.0] — 2026-09-09  ·  **in-browser Explorer: SD card, device and SIM**
 
 

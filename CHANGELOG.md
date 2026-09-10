@@ -2,7 +2,7 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
-## [Unreleased]
+## [2.8.1] — 2026-09-10  ·  **configurable FTP port, and vsftpd started properly**
 
 ### Added
 - **The FTP port is configurable again**, and this time it reaches the server.

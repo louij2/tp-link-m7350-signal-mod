@@ -2,6 +2,40 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [Unreleased]
+
+### Added
+- **The FTP port is configurable again**, and this time it reaches the server.
+  - The port is written into vsftpd's config **templates**, not just its live
+    config. The firmware's `/usr/bin/start_vsftpd` rebuilds
+    `/etc/config/vsftpd/vsftpd.conf` with `cat <template> > <conf>` on every
+    single start, so anything written only to the live file is wiped the next
+    time FTP comes up.
+  - Saving a new port restarts FTP, so the UI never shows a port nothing is
+    listening on.
+  - The untouched originals are backed up once to `*.sigmod-orig`, so this is
+    reversible with a single copy loop.
+  - Port 21 writes no `listen_port` line at all, leaving the files exactly as
+    shipped, because 21 is already vsftpd's default.
+
+### Fixed
+- **`ftp_on` was starting the daemon without setting anything up.** It ran
+  `vsftpd &` directly, where the firmware's `start_vsftpd` also regenerates the
+  config from the right template, creates the FTP user, and **bind-mounts the SD
+  card at `/home/<user>/sdcard`**. Starting the bare daemon skips all of that and
+  can leave a server with nothing to serve. It calls `start_vsftpd` with the mode
+  derived from `storageshare` uci now, and `ftp_off` calls `stop_vsftpd`.
+- **`ftp_restart` reported the wrong state.** `start_vsftpd` is backgrounded and
+  does real work before the daemon appears, so reading the state immediately
+  after returned `off` for a restart that was in fact fine. It waits for the
+  daemon rather than reporting a lie.
+
+### Note
+- My earlier claim that there was no `vsftpd.conf` on this device was wrong. It
+  is not at `/etc/vsftpd.conf`, which is where I looked; it lives at
+  `/etc/config/vsftpd/vsftpd.conf` and is generated per sharing mode from three
+  templates alongside it.
+
 ## [2.8.0] — 2026-09-10  ·  **Settings tab, and diagnostic logging to the SD card**
 
 ### Added

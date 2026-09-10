@@ -70,12 +70,31 @@ sdlog_state() { [ -f "$SDLOG_MARK" ] && echo on || echo off; }
 #   * our tcpsvd could never bind 21 anyway, vsftpd already had it.
 # So the toggle reported and controlled the wrong thing. It drives vsftpd now.
 ftp_state() { pgrep -x vsftpd >/dev/null 2>&1 && echo on || echo off; }
+# Use the FIRMWARE'S OWN start_vsftpd, not a bare "vsftpd &". That helper also
+# regenerates the config from the right template, creates the FTP user, and
+# bind-mounts the SD card at /home/<user>/sdcard. Starting the daemon on its own
+# skips all of that and can leave a server with nothing to serve.
+ftp_mode() {
+  # Mirrors service_storageshare: anonymous off means the signed-in user,
+  # otherwise read-write or read-only anonymous.
+  a=$(uci get storageshare.property.ifanon 2>/dev/null)
+  w=$(uci get storageshare.property.ifrw 2>/dev/null)
+  if [ "$a" = "1" ]; then
+    [ "$w" = "1" ] && echo anonrw || echo anonro
+  else
+    echo signed
+  fi
+}
+
 ftp_on() {
   ftp_state | grep -q on && { touch "$FTP_MARK"; return; }
-  setsid vsftpd </dev/null >/dev/null 2>&1 &
+  # Stamp the configured port into the templates first: start_vsftpd rebuilds
+  # the live conf from them, so anything written afterwards would be wiped.
+  [ -x /usr/bin/ftp_port.sh ] && /usr/bin/ftp_port.sh 2>/dev/null
+  setsid start_vsftpd "$(ftp_mode)" </dev/null >/dev/null 2>&1 &
   touch "$FTP_MARK" 2>/dev/null
 }
-ftp_off() { pkill -x vsftpd 2>/dev/null; pkill -f 'tcpsvd .* ftpd' 2>/dev/null; rm -f "$FTP_MARK" 2>/dev/null; }
+ftp_off() { stop_vsftpd 2>/dev/null || pkill -x vsftpd 2>/dev/null; rm -f "$FTP_MARK" 2>/dev/null; }
 
 # --- Telnet (busybox telnetd; often already listening on :23) --------------
 tel_state() { pgrep -x telnetd >/dev/null 2>&1 && echo on || echo off; }
@@ -123,6 +142,17 @@ case "$A" in
   ttl_on)  ttl_on;  printf '{"ok":true,"ttl":"%s"}' "$(ttl_state)" ;;
   ttl_off) ttl_off; printf '{"ok":true,"ttl":"%s"}' "$(ttl_state)" ;;
   ttl_status) printf '{"ttl":"%s"}' "$(ttl_state)" ;;
+  # start_vsftpd is backgrounded and does real work (user setup, bind mount)
+  # before the daemon appears, so reading the state straight after returns "off"
+  # for a restart that is in fact fine. Wait for it rather than report a lie.
+  ftp_restart)
+    ftp_off; sleep 2; ftp_on
+    i=0
+    while [ "$i" -lt 12 ]; do
+      ftp_state | grep -q on && break
+      i=$((i + 1)); sleep 1
+    done
+    printf '{"ok":true,"ftp":"%s"}' "$(ftp_state)" ;;
   ftp_on)  ftp_on;  sleep 1; printf '{"ok":true,"ftp":"%s"}' "$(ftp_state)" ;;
   ftp_off) ftp_off; printf '{"ok":true,"ftp":"%s"}' "$(ftp_state)" ;;
   ftp_status) printf '{"ftp":"%s"}' "$(ftp_state)" ;;

@@ -1139,7 +1139,8 @@
   // bounds; the UI never invents limits of its own.
   var CFG_FIELDS = {
     services: [
-      ['telnet_port', 'Telnet port', 'Takes effect the next time Telnet is switched on. FTP is not here: it is the firmware\'s own vsftpd on 21, with no config file to set a port in.'],
+      ['ftp_port',    'FTP port',    'Written into vsftpd\'s config templates, because the firmware rebuilds its live config from them on every start. Saving restarts FTP if it is running.'],
+      ['telnet_port', 'Telnet port', 'Takes effect the next time Telnet is switched on.'],
       ['ttl_value',   'TTL value',   'Outgoing TTL when the TTL-fix is on. 65 is what hides tethering from SMARTY and Three.']
     ],
     diag: [
@@ -1195,7 +1196,13 @@
       msg.textContent = (d && d.ok) ? 'Saved.' :
                         (d && d.error) ? ('Rejected: ' + d.error) :
                         ('Failed (' + st + ')');
-      if (d && d.ok) cfgLoad(section);
+      if (d && d.ok) {
+        // The port lives in vsftpd's templates, so a running server keeps the
+        // old one until it is restarted. Do that here rather than leaving the
+        // UI showing a port nothing is listening on.
+        if (parts.join('&').indexOf('ftp_port=') >= 0) ctl('ftp_restart', function () { refreshCtlState(); });
+        cfgLoad(section);
+      }
     });
   }
 

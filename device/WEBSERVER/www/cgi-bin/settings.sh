@@ -29,7 +29,8 @@ supplied="$HTTP_X_AUTH"
 [ "$supplied" = "$(cat "$PWFILE" 2>/dev/null)" ] || fail "403 Forbidden" "auth"
 
 # key:default:min:max  (min/max empty means "not a number, see validate())
-SPEC="telnet_port:23:1:65535
+SPEC="ftp_port:21:1:65535
+telnet_port:23:1:65535
 ttl_value:65:1:255
 sdlog_max_mb:20:1:2048
 sdlog_keep_days:14:1:365

@@ -96,7 +96,7 @@ The UI changes are injected by one JavaScript file loaded from the page
 
 ---
 
-> **Use [v2.8.1](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
+> **Use [v2.8.2](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
 > later.** Earlier versions were progressively less safe by default: v2.0.0
 > shipped the optional root tools (FTP/Telnet/web console) with **no
 > authentication**; v2.1.0 added a password gate but still fell back to

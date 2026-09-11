@@ -2,6 +2,38 @@
 
 All notable changes to the M7350 Extreme mod are documented here.
 
+## [2.8.2] — 2026-09-11  ·  **the logger now survives what it is meant to record**
+
+### Fixed
+- **Diagnostic logging stopped at exactly the moment it was supposed to be
+  recording.** `sd_log.sh` was called from the daemon's slow tick *after*
+  `poll_cell`. When the modem wedges, `poll_cell`'s AT reads hang and the tick
+  never reaches the logger, so the feature built to capture a lock-up went
+  silent during one.
+  - Not hypothetical. It caught the minute the data path died on 2026-09-10
+    (`gw=10.136.253.17 rsrp=-073.40` at 14:14:43, `gw=none rsrp=` at 14:15:44,
+    with `a2_mux_write_done` and `ipa disconnect_to_bam` in the kernel log) and
+    then wrote nothing for the next twenty hours while the fault persisted.
+  - It runs first in the tick now. Whatever else the loop fails to do, the
+    sample gets written.
+
+### Changed
+- **The README leads with what the mod does.** The first twelve lines were a
+  list of the ways v2.0.0 to v2.2.0 leaked data and skipped authentication:
+  correct information, wrong place, reading as a warning label on the current
+  release. It now sits just above installation, where it is actionable. The
+  first screenshot moved from line 70, below the fold, to the top.
+- **The feature table matches what actually ships.** It still advertised
+  resizable cards with a corner grip, removed in 2.6.x, and listed roughly
+  two-thirds of the current feature set: no Explorer, no SIM or eSIM
+  inspection, no Settings tab, no SD diagnostic logging, no SSH key management,
+  no configurable ports. Split into Signal and radio, SIM and eSIM, Files and
+  storage, and System and control.
+- The eUICC limitation and the reason a CGI never touches an AT channel are
+  stated in the README rather than left to be discovered.
+- The architecture section no longer hard-codes a five second poll interval,
+  which became configurable in 2.8.0.
+
 ## [2.8.1] — 2026-09-10  ·  **configurable FTP port, and vsftpd started properly**
 
 ### Added

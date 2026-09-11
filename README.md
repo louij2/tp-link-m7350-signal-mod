@@ -26,37 +26,73 @@ GL.iNet router): you can watch signal quality and the serving band straight from
 
 ## What you get
 
+### Signal and radio
+
 | Feature | Where |
 |---|---|
-| RSRP / RSRQ / RSSI, EARFCN, LTE **Band** (derived) | Login page status block **and** the post-login **Status** tab, under *Connection Status* |
-| Colour-coded **signal-quality bar** | Same status views |
-| Live **throughput** (↓/↑) + **latency** + **uptime** | Same status views |
-| **System** panel (temp, WAN IP, signal bar, throughput, uptime) | Post-login Status tab |
-| **Controls** panel: **Reboot**, **ADB on/off**, **TTL-fix on/off** | Post-login Status tab |
-| **RSRP sparkline** (4 hours of signal history) | System panel |
-| **Serving cell**: Cell ID, eNodeB, TAC | System panel |
-| **SIM identity**: ICCID + Carrier (SPN), read from the card | About Device |
-| **Drag-and-drop** card arrangement, saved on the router | Post-login Status tab |
-| **Resizable cards** — drag the corner grip; content reflows to fit | Post-login Status tab |
-| **Hardware**: CPU, load, RAM, swap, storage, SD-card slot | Post-login Status tab |
-| **Data saver**: stops the ping, refuses metric scrapes, slows all polling | Post-login Status tab |
-| **SD card**: setup/format helper, long-term signal history, CSV export | `sd_setup.sh`, Hardware card |
-| **Prometheus** metrics endpoint (for Grafana) | `http://192.168.0.1/cgi-bin/metrics.sh` |
-| Modern dark theme with **inline-SVG icons** (readable on every page, incl. Advanced) | Whole web UI (login + admin) |
-| Root web console (optional) | `http://192.168.0.1/console.html` |
-| Survives reboot | Daemon auto-starts via a SysV init script; all files live on persistent NAND |
+| RSRP / RSRQ / RSSI, EARFCN, LTE **Band** (derived) | Login page **and** post-login Status tab |
+| Colour-coded **signal-quality bar** | Both status views |
+| Live **throughput** (down/up), **latency**, **uptime** | Both status views |
+| **RSRP sparkline**, four hours of history | System card |
+| **Serving cell**: Cell ID, eNodeB, TAC | System card |
+| **Data roaming** toggle, and APN setting | Controls, Settings |
+
+### SIM and eSIM
+
+| Feature | Where |
+|---|---|
+| **SIM elementary files** read over `AT+CRSM`: ICCID, IMSI, SPN, AD, UST, GIDs | Explorer, SIM tab |
+| **FPLMN** — the networks the card itself has marked *forbidden* | Explorer, SIM tab |
+| **PLMN selector lists** (`PLMNwAcT`, `OPLMNwAcT`, `HPLMNwAcT`) | Explorer, SIM tab |
+| **eSIM (eUICC) status** with the evidence for the verdict shown | Explorer, SIM tab |
+| Automatic recovery from a stuck **manual network selection** | `signal_poll.sh` |
+
+> eUICC **profile management is not possible on this device** and the UI says so
+> rather than omitting it. Listing or switching profiles needs APDUs to the
+> ISD-R applet, which means `AT+CSIM` / `AT+CCHO` / `AT+CGLA`, and this firmware
+> errors on all three. `AT+CRSM` works because it is a restricted command the
+> modem runs on your behalf, not a channel for arbitrary APDUs.
+
+### Files and storage
+
+| Feature | Where |
+|---|---|
+| In-browser **Explorer**: SD card, whole device filesystem, SIM — read only | Settings, or Controls |
+| Credential files (`signalmod.pw`, `shadow`, host keys, `authorized_keys`) **listed but never served** | Explorer |
+| **SD card** setup and format helper (FAT32, so you can read it on a laptop) | `sd_setup.sh` |
+| **Long-term signal history** to the card, one CSV a day | `sd_setup.sh`, Explorer |
+| **Diagnostic logging that survives a lock-up** — synced every write, with new kernel messages | Controls toggle, Explorer |
+
+### System and control
+
+| Feature | Where |
+|---|---|
+| **Settings tab** of its own, after Advanced | Top nav |
+| Configurable **FTP port**, **Telnet port**, **TTL value**, log cap and retention, poll intervals | Settings |
+| Toggles: **TTL-fix**, **ADB**, **FTP**, **Telnet**, **Wi-Fi**, **roaming**, **data saver**, **SD logging** | Controls |
+| **Hardware** card: CPU, load, RAM, swap, storage, SD card, temperature | Status tab |
+| **Drag to reorder** dashboard cards, saved on the router | Status tab |
+| **Data saver**: stops the ping, refuses metric scrapes, slows all polling | Controls |
+| **Prometheus** metrics endpoint, for Grafana | `/cgi-bin/metrics.sh` |
+| **SSH key management** and password change, key-only root SSH | Security card |
+| Modern dark theme with inline-SVG icons, across the whole UI | Login and admin |
+| Root web console (optional, password-gated) | `/console.html` |
+| Survives reboot | SysV init scripts; everything lives on persistent NAND |
 
 **TTL-fix** pins the outgoing IP TTL on the mobile interface to 65 so the carrier
-can't see per-hop decrement from tethered devices — handy against tethering
-throttling on SMARTY/Three. It's a toggle (off by default) and is re-applied at
-boot when left on. **ADB on/off** toggles the USB debug bridge from the browser
-(turning it off drops adb until you turn it back on here or reboot). Both the
-System and Controls panels are **post-login only**.
+cannot see per-hop decrement from tethered devices, which helps against tethering
+throttling on SMARTY and Three. It is off by default and re-applied at boot when
+left on. **ADB on/off** toggles the USB debug bridge from the browser; turning it
+off drops adb until you turn it back on here or reboot.
 
-The stats come from a small daemon that polls the modem's AT channel every 5s and
-caches JSON; the web UI reads that cache. The UI changes are injected by one
-JavaScript file loaded from the page `<head>`, so nothing in the stock templates
-is destructively rewritten.
+The stats come from a small daemon that polls the modem's AT channel and caches
+JSON, which the web UI reads. The cadence is configurable in Settings and
+defaults to five seconds, thirty while data saver is on. A CGI never touches an
+AT channel: one that opens `/dev/smd*` blocks and takes lighttpd down with it,
+so anything needing the modem is served from the daemon's cache.
+
+The UI changes are injected by one JavaScript file loaded from the page
+`<head>`, so nothing in the stock templates is destructively rewritten.
 
 ---
 

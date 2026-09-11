@@ -347,6 +347,15 @@ while true; do
   slow=$((slow + 1))
   if [ "$slow" -ge 8 ]; then
     slow=0
+
+    # FIRST, before anything that talks to the modem. This used to sit after
+    # poll_cell, which meant that when the modem wedged, the AT reads hung and
+    # the tick never reached the logger -- so diagnostic logging stopped at
+    # exactly the moment it was supposed to be recording. It logged the minute
+    # the data path died on 2026-09-10 and then nothing for the next 20 hours.
+    # Whatever else this loop fails to do, it writes the sample.
+    [ -x /usr/bin/sd_log.sh ] && /usr/bin/sd_log.sh 2>/dev/null
+
     poll_cell
     hist_push "$RSRP"
     sd_history_push
@@ -354,11 +363,6 @@ while true; do
     # Re-reading at all is what catches an eUICC profile switch or a card swap.
     simtick=$((simtick + 1))
     if [ -z "$ICCID" ] || [ "$simtick" -ge 5 ]; then simtick=0; poll_sim; fi
-
-    # Diagnostic sample to the SD card, if the toggle is on. Cheap, and the
-    # only record that survives a wedge: everything else worth having is in
-    # tmpfs and dies with the device.
-    [ -x /usr/bin/sd_log.sh ] && /usr/bin/sd_log.sh 2>/dev/null
 
     # SIM elementary files for the web UI's SIM explorer. Far slower than the
     # rest: these change only on a card swap or an eUICC profile switch. The

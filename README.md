@@ -1,20 +1,18 @@
 # TP-Link M7350 — LTE signal stats + dark UI mod
 
-> **Use [v2.8.1](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
-> later.** Earlier versions were progressively less safe by default: v2.0.0
-> shipped the optional root tools (FTP/Telnet/web console) with **no
-> authentication**; v2.1.0 added a password gate but still fell back to
-> unauthenticated when no password was set; v2.2.0 stopped serving IMEI/IMSI/SIM
-> unauthenticated; **v2.3.0 fails closed**, refusing every state-changing action
-> until you create `/etc/signalmod.pw`.
->
-> **Set a control password as part of installing:**
-> `printf '%s' 'yourpassword' > /etc/signalmod.pw && chmod 600 /etc/signalmod.pw`
+Turn a TP-Link M7350 v3 portable 4G router into something you can actually see
+inside: **live LTE signal metrics** (RSRP, RSRQ, RSSI, EARFCN, Band), a serving
+cell readout, a **dark dashboard** you can rearrange, an in-browser **file
+explorer** for the SD card and the device, **SIM/eSIM inspection**, diagnostic
+**logging that survives a lock-up**, Prometheus metrics and key-only SSH.
 
-Add **live LTE signal metrics** (RSRP, RSRQ, RSSI, EARFCN, Band) and a **modern
-dark theme** to the web UI of a TP-Link M7350 v3 portable 4G router — no firmware
-reflash, just files dropped onto the device over ADB. Optionally add a
-browser-based **root console** (password-gated) for deep debugging.
+No firmware reflash. Files are dropped onto the device over ADB or SSH, and the
+stock web UI is extended in place rather than replaced.
+
+![Status dashboard](docs/status-dashboard.png)
+
+Everything the stock firmware shows you about your signal is four bars. This
+shows you the band, the cell you are camped on, and four hours of history.
 
 This is handy when the M7350 is used as a **USB-tether uplink** (e.g. into a
 GL.iNet router): you can watch signal quality and the serving band straight from
@@ -59,6 +57,19 @@ The stats come from a small daemon that polls the modem's AT channel every 5s an
 caches JSON; the web UI reads that cache. The UI changes are injected by one
 JavaScript file loaded from the page `<head>`, so nothing in the stock templates
 is destructively rewritten.
+
+---
+
+> **Use [v2.8.1](https://github.com/louij2/tp-link-m7350-signal-mod/releases) or
+> later.** Earlier versions were progressively less safe by default: v2.0.0
+> shipped the optional root tools (FTP/Telnet/web console) with **no
+> authentication**; v2.1.0 added a password gate but still fell back to
+> unauthenticated when no password was set; v2.2.0 stopped serving IMEI/IMSI/SIM
+> unauthenticated; **v2.3.0 fails closed**, refusing every state-changing action
+> until you create `/etc/signalmod.pw`.
+>
+> **Set a control password as part of installing:**
+> `printf '%s' 'yourpassword' > /etc/signalmod.pw && chmod 600 /etc/signalmod.pw`
 
 ---
 

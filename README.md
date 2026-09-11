@@ -371,7 +371,8 @@ symlink, and stops the daemon.
 
 ### 1. Signal daemon + cache (never touch the AT channel from CGI)
 
-`/usr/bin/signal_poll.sh` owns a modem **AT channel** and polls it every 5s:
+`/usr/bin/signal_poll.sh` owns a modem **AT channel** and polls it on a
+configurable interval, five seconds by default:
 
 ```
 AT$QCRSRP?   -> RSRP + EARFCN     (Qualcomm proprietary)
